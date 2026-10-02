@@ -1,6 +1,13 @@
-# Erro
+# E.R.R.O.
 
-The `web` folder contains the default [Vite React + TypeScript demo](https://vite.dev/guide/).
+A project by Eric and Robin, starting with a React + TypeScript chat interface
+in `web`. The chat is an early visual preview: message entry, sending,
+attachments, and new conversations are disabled. There is no backend or API
+integration.
+
+Read [the project context](docs/project-context.md) for the background, possible
+future directions, and guidance for AI assistants. The direction is still open;
+electrical work, marketing, AI, and a future portfolio are possibilities.
 
 ## Run with Docker Compose
 
