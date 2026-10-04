@@ -4,6 +4,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -37,12 +38,20 @@ public class AiService {
             throw new AiException(HttpStatus.SERVICE_UNAVAILABLE, "AI chat is not configured yet.");
         }
 
+        var request = new LinkedHashMap<String, Object>();
+        request.put("model", properties.model());
+        request.put("input", message);
+        request.put("store", false);
+        request.put("max_output_tokens", properties.maxOutputTokens());
+        if (properties.reasoningEffort() != null && !properties.reasoningEffort().isBlank()) {
+            request.put("reasoning", Map.of("effort", properties.reasoningEffort().strip()));
+        }
+
         try {
             var response = client.post().uri(properties.endpoint())
                     .contentType(MediaType.APPLICATION_JSON)
                     .headers(headers -> headers.setBearerAuth(properties.apiKey()))
-                    .body(Map.of("model", properties.model(), "input", message,
-                            "store", false, "max_output_tokens", properties.maxOutputTokens()))
+                    .body(request)
                     .retrieve().body(JsonNode.class);
             return extractReply(response);
         } catch (RestClientResponseException failure) {

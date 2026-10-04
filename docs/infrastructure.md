@@ -8,7 +8,8 @@ Tomcat on port 8080. Chat does not store data in the infrastructure services.
 
 | File or directory | Purpose |
 | --- | --- |
-| `compose.yaml` | Starts the five services, configures credentials and ports, and declares health checks and persistent volumes. |
+| `compose.yaml` | Starts Nginx web, backend, PostgreSQL, Redis, and MinIO; provides optional Vite through the `dev` profile. Configures credentials, ports, health checks, and persistent volumes. |
+| `web/Dockerfile`, `web/nginx/` | Build and serve React with an Nginx reverse proxy to the backend; see [Web proxy](web-proxy.md). |
 | `.env.example` | Available local Compose overrides and development defaults; `.env` holds ignored machine-specific overrides. |
 | `backend/pom.xml` | Spring Boot, Java, and AWS SDK versions and backend dependencies. |
 | `backend/mvnw`, `backend/mvnw.cmd`, `backend/.mvn/` | Maven Wrapper for Unix and Windows, with the pinned Maven distribution and checksum. |
@@ -34,6 +35,7 @@ Lettuce, and other Spring dependency versions.
 | Maven | 3.10.0 via Maven Wrapper | [Maven downloads](https://maven.apache.org/download.cgi) |
 | PostgreSQL | 18.6 | [PostgreSQL releases](https://www.postgresql.org/docs/current/release.html) |
 | Redis | 8.10.1 | [Redis 8.10 release notes](https://redis.io/docs/latest/operate/oss_and_stack/stack-with-enterprise/release-notes/redisce/redisos-8.10-release-notes/) |
+| Nginx | 1.30.5, stable unprivileged Alpine image pinned by digest | [NGINX unprivileged images](https://github.com/nginx/docker-nginx-unprivileged) |
 | MinIO community | RELEASE.2025-10-15T17-29-55Z | [Final community release](https://github.com/minio/minio/releases/tag/RELEASE.2025-10-15T17-29-55Z) |
 | AWS SDK for Java | 2.55.11 | [Published SDK versions](https://repo.maven.apache.org/maven2/software/amazon/awssdk/bom/maven-metadata.xml) |
 
@@ -81,8 +83,11 @@ docker compose up -d --build backend
 # Stop the stack, preserving its named data volumes.
 docker compose down
 
-# Run just the existing Vite frontend.
+# Run just the production web server (chat also needs backend).
 docker compose up web
+
+# Optional Vite live reload at localhost:5174, alongside the default web service.
+docker compose --profile dev up -d web-dev
 ```
 
 PostgreSQL data, Redis append-only persistence, and MinIO data each have a named
@@ -96,7 +101,8 @@ database user's password.
 
 | Service | Host address | Default local credentials |
 | --- | --- | --- |
-| Vite frontend | http://localhost:5173 | None |
+| Nginx website and chat proxy | http://localhost:5173 | None |
+| Vite frontend (optional `dev` profile) | http://localhost:5174 | None |
 | Backend | http://localhost:8080/api/chat (POST) | AI key configured on the server; no visitor login |
 | PostgreSQL | localhost:5432, database `erro` | `erro` / `erro-local-postgres` |
 | Redis | localhost:6379 | Password `erro-local-redis` |
@@ -123,6 +129,7 @@ the backend's environment; the two sets of names are deliberately separate.
 
 | Compose variable | Purpose and default |
 | --- | --- |
+| `WEB_PORT`, `VITE_PORT` | Published host ports for Nginx and optional Vite, defaults 5173 and 5174. Nginx always listens on 8080 inside its container. |
 | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Database name, user, and password; also mapped to backend `DATABASE_URL`, `DATABASE_USERNAME`, and `DATABASE_PASSWORD`. Defaults are listed above. |
 | `POSTGRES_PORT` | Published host port, default 5432; the internal database port stays 5432. |
 | `REDIS_PASSWORD` | Redis password shared with the backend, default `erro-local-redis`. |
@@ -133,7 +140,7 @@ the backend's environment; the two sets of names are deliberately separate.
 | `AWS_REGION` | Region used by both MinIO and the backend, default `us-east-1`. |
 | `BACKEND_PORT` | Published backend host port, default 8080. |
 
-Compose also passes `AI_ENDPOINT`, `AI_API_KEY`, `AI_MODEL`,
+Compose also passes `AI_ENDPOINT`, `AI_API_KEY`, `AI_MODEL`, `AI_REASONING_EFFORT`,
 `AI_MAX_OUTPUT_TOKENS`, `AI_TIMEOUT`, and `CHAT_ALLOWED_ORIGINS` to the backend.
 See the complete [chat configuration reference](chat.md#configuration).
 
@@ -225,8 +232,10 @@ through [endpoint configuration](https://docs.aws.amazon.com/sdk-for-java/latest
 
 ## Scope and deployment
 
-This Compose stack is for local development. The existing Railway service still
-builds `web/`; this setup does not deploy a backend or change the website's domain.
+This Compose stack is for local development. Its default web service now builds
+the same Nginx image intended for Railway; an optional Vite service keeps live
+reload available. Railway should build `web/Dockerfile` with root directory
+`/web`. This setup does not deploy cloud resources or change the website's domain.
 See [Railway setup](railway.md) for adding the backend, PostgreSQL 18, and Redis,
 all variables, and connecting the existing frontend. The backend Dockerfile uses
 normal Docker layers to cache dependencies, avoiding service-specific BuildKit
@@ -255,3 +264,12 @@ before the chat API was added:
 These are dated setup results, not a guarantee of current service health. After
 future infrastructure changes, rerun the Compose build and startup checks and
 record any new verification results or limitations.
+
+## Nginx verification — 2026-10-04
+
+The web image build and Compose configuration (including the optional `dev`
+profile) passed. The default stack started with Nginx serving the website and
+forwarding to Spring Boot. Backend startup again verified PostgreSQL, Redis,
+and MinIO. The optional Vite proxy also reached the backend successfully.
+Six production-image proxy tests and a browser flow with the real backend and
+a mock AI provider passed; see [Web proxy verification](web-proxy.md#results--2026-10-04).

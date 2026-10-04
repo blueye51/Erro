@@ -6,8 +6,11 @@ E.R.R.O., which ideas are tentative, and the limits of the current website.
 [Infrastructure](infrastructure.md) covers the Java backend, Docker Compose,
 PostgreSQL, Redis, local MinIO, and the planned switch to Amazon S3.
 
-[Chat](chat.md) covers the stateless AI flow, API contract, provider configuration,
+[Chat](chat.md) covers the stateless AI flow, API contract, DeepSeek configuration,
 frontend behavior, deployment settings, and verification.
+
+[Web proxy](web-proxy.md) covers the Nginx image, private API forwarding, runtime
+variables, local production/development modes, and proxy regression tests.
 
 [Railway setup](railway.md) walks through adding the backend, PostgreSQL 18, and
 Redis beside the existing web service, with copy-paste variables, networking,

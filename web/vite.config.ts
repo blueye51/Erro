@@ -10,7 +10,8 @@ export default defineConfig(({ mode }) => {
       proxy: {
         '/api': {
           target: env.BACKEND_PROXY_TARGET || 'http://localhost:8080',
-          changeOrigin: true,
+          // Preserve the browser's host and port, matching the Nginx proxy.
+          changeOrigin: false,
         },
       },
     },

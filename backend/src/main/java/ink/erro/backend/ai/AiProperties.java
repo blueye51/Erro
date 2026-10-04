@@ -11,6 +11,6 @@ import org.springframework.validation.annotation.Validated;
 
 @Validated
 @ConfigurationProperties("ai")
-public record AiProperties(@NotNull URI endpoint, String apiKey, String model,
+public record AiProperties(@NotNull URI endpoint, String apiKey, String model, String reasoningEffort,
                            @Min(1) @Max(32768) int maxOutputTokens, @NotNull Duration timeout) {
 }

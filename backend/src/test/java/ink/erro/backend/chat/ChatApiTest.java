@@ -44,7 +44,7 @@ class ChatApiTest {
     private static volatile boolean slow;
     private static final String REPLY = """
             {"status":"completed","output":[
-              {"type":"reasoning","content":[{"type":"output_text","text":"Do not show this"}]},
+              {"type":"reasoning","content":[{"type":"reasoning_text","text":"Do not show this"}]},
               {"type":"message","role":"assistant","content":[
                 {"type":"output_text","text":"  **Hello**  "},
                 {"type":"output_text","text":"Second paragraph."}]}]}
@@ -54,9 +54,10 @@ class ChatApiTest {
 
     @DynamicPropertySource
     static void configure(DynamicPropertyRegistry registry) {
-        registry.add("ai.endpoint", () -> "http://localhost:" + provider.getAddress().getPort() + "/v1/responses");
+        registry.add("ai.endpoint", () -> "http://localhost:" + provider.getAddress().getPort() + "/responses");
         registry.add("ai.api-key", () -> "test-server-only-key");
-        registry.add("ai.model", () -> "test-model");
+        registry.add("ai.model", () -> "deepseek-flash");
+        registry.add("ai.reasoning-effort", () -> "none");
         registry.add("ai.timeout", () -> "5s");
         registry.add("chat.allowed-origins", () -> "http://localhost:5173");
     }
@@ -91,9 +92,10 @@ class ChatApiTest {
         assertThat(first.path("input").asText()).isEqualTo("First message");
         assertThat(second.path("input").asText()).isEqualTo("Second message");
         assertThat(second.path("store").asBoolean()).isFalse();
-        assertThat(second.path("model").asText()).isEqualTo("test-model");
+        assertThat(second.path("model").asText()).isEqualTo("deepseek-flash");
         assertThat(second.path("max_output_tokens").asInt()).isEqualTo(2048);
-        assertThat(second.size()).isEqualTo(4);
+        assertThat(second.path("reasoning").path("effort").asText()).isEqualTo("none");
+        assertThat(second.size()).isEqualTo(5);
         assertThat(authHeaders).containsOnly("Bearer test-server-only-key");
     }
 
@@ -155,10 +157,24 @@ class ChatApiTest {
     @Test
     void missingKeyFailsWithoutContactingProvider() {
         var service = new AiService(new AiProperties(java.net.URI.create("http://localhost:" + provider.getAddress().getPort()),
-                "", "test-model", 2048, Duration.ofSeconds(1)));
+                "", "deepseek-flash", "none", 2048, Duration.ofSeconds(1)));
         assertThatThrownBy(() -> service.reply("Hello"))
                 .isInstanceOf(AiException.class).hasMessage("AI chat is not configured yet.");
         assertThat(requests).isEmpty();
+    }
+
+    @Test
+    void emptyReasoningSettingLeavesProviderDefaultUnchanged() throws Exception {
+        var service = new AiService(new AiProperties(java.net.URI.create("http://localhost:"
+                + provider.getAddress().getPort() + "/responses"),
+                "test-server-only-key", "test-model", "", 2048, Duration.ofSeconds(5)));
+        assertThat(service.reply("Hello")).isEqualTo("**Hello**\n\nSecond paragraph.");
+        assertThat(requests).hasSize(1);
+        var request = JsonMapper.builder().build().readTree(requests.remove());
+        assertThat(request.has("reasoning")).isFalse();
+        assertThat(request.path("input").asText()).isEqualTo("Hello");
+        assertThat(request.path("store").asBoolean()).isFalse();
+        assertThat(request.size()).isEqualTo(4);
     }
 
     @Test
@@ -176,7 +192,7 @@ class ChatApiTest {
         try {
             var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
             server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
-            server.createContext("/v1/responses", exchange -> {
+            server.createContext("/responses", exchange -> {
                 requests.add(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
                 authHeaders.add(exchange.getRequestHeaders().getFirst("Authorization"));
                 var response = providerBody.getBytes(StandardCharsets.UTF_8);

@@ -7,20 +7,22 @@ different names. MinIO stays local. Amazon S3 can be connected later.
 
 This guide records the required deployment configuration. No Railway resources
 have been created or inspected from this workspace. The dashboard labels below
-follow Railway's documentation checked on 2026-10-03.
+follow Railway's documentation checked on 2026-10-04.
 
 ```mermaid
 flowchart LR
-    W[web: erro.ink] -->|serves React| B[Visitor's browser]
-    B -->|HTTPS POST /api/chat| A[backend: public Railway domain]
+    B[Visitor's browser] -->|HTTPS website and /api/chat| W[web: erro.ink, Nginx]
+    W -->|private HTTP :8080| A[backend: Spring Boot]
     A -->|private connection| P[Postgres]
     A -->|private connection| R[Redis]
     A -->|HTTPS with server API key| AI[AI provider]
 ```
 
-The browser calls the backend directly, so the backend needs a public HTTPS
-domain. Database connections use Railway's private network. Chat does not write
-to PostgreSQL or Redis; both are connected and checked for future work.
+The browser calls `/api/chat` on `erro.ink`. Nginx forwards it to the backend's
+private address. Only web needs a public HTTPS domain. Database connections also
+use Railway's private network. Chat does not write to PostgreSQL or Redis; both
+are connected and checked for future work. See [Web proxy](web-proxy.md) for the
+implementation, matching the Nginx layout used in Eric's wiki.
 
 ## 1. Put the code on the deployment branch
 
@@ -71,6 +73,7 @@ and set these values:
 | --- | --- |
 | Root Directory | `/backend` |
 | Builder | Detected Dockerfile (`backend/Dockerfile` in the repository) |
+| Dockerfile Path, if selected manually | `Dockerfile`, relative to root directory `/backend`. |
 | Build Command override | Empty; the Dockerfile runs Maven `verify`. |
 | Start Command override | Empty; the Dockerfile starts the Java application. |
 | Pre-deploy Command | Empty; there are no migrations. |
@@ -104,17 +107,22 @@ SPRING_DATA_REDIS_USERNAME=${{Redis.REDISUSER}}
 S3_ENABLED=false
 INFRASTRUCTURE_VERIFY_ON_STARTUP=true
 CHAT_ALLOWED_ORIGINS=https://erro.ink
-AI_ENDPOINT=https://api.openai.com/v1/responses
-AI_MODEL=gpt-5.4-mini
+AI_ENDPOINT=https://api.deepseek.com/responses
+AI_MODEL=deepseek-flash
+AI_REASONING_EFFORT=none
 AI_MAX_OUTPUT_TOKENS=2048
 AI_TIMEOUT=60s
 ```
 
-Add `AI_API_KEY` separately with your real provider API key. It belongs on
+Add `AI_API_KEY` separately with your real **DeepSeek** API key. It belongs on
 `backend` only. Without it, the backend still starts but chat returns
 `AI chat is not configured yet.` The model must be available to that account.
-The adapter expects the Responses API schema; changing the endpoint alone does
-not adapt other API formats. See [Chat configuration](chat.md#configuration).
+DeepSeek supports the Responses API schema this adapter uses. Its full endpoint
+here is `/responses`, not `/chat/completions`. If you already entered OpenAI
+values, replace the endpoint, model, and key together. `AI_REASONING_EFFORT=none`
+disables thinking for this basic chat after the updated backend is deployed.
+Apply the variables and redeploy backend; no frontend change is needed when only
+the AI provider changes. See [DeepSeek setup](chat.md#deepseek-setup).
 
 The JDBC prefix is required by this Java application. Railway's generated
 `DATABASE_URL` is usually a `postgresql://` URL and must not be copied directly
@@ -142,7 +150,7 @@ trailing slash. Only include `www.erro.ink` if that domain is configured and use
 Apply/deploy staged variable changes; editing a variable alone does not update
 an existing container. See [Railway variable references](https://docs.railway.com/variables).
 
-## 5. Deploy the backend and give it a domain
+## 5. Deploy the private backend
 
 Wait until PostgreSQL and Redis are ready, then deploy `backend`. In its runtime
 logs, confirm all of:
@@ -154,48 +162,72 @@ S3 storage disabled; skipping its connection check
 Infrastructure ready
 ```
 
-In **backend → Settings → Networking → Public Networking**, choose **Generate
-Domain**. Set the target port to **8080**, matching the backend's `PORT` variable.
-Use the resulting `https://...up.railway.app` origin. No Namecheap change is
-needed; `erro.ink` continues pointing at `web`.
+Keep backend `PORT=8080`. Its private address is available through
+`${{backend.RAILWAY_PRIVATE_DOMAIN}}` in the same project/environment. It does
+not need a generated public domain; a "No HTTP domain" notice on this backend
+is expected. Web will receive public requests and forward them privately.
+
+If a backend public domain already exists from the earlier setup, keep it until
+the new web proxy has been deployed and verified, then remove that domain.
+No Namecheap change is needed; `erro.ink` continues pointing at `web`.
 
 The backend has no home page. Opening its root in a browser may return 404, and
 opening `/api/chat` sends GET and returns 405. Neither tests the POST chat flow.
 Do not use `/` or `/api/chat` as a Railway GET healthcheck path.
 
-## 6. Connect the existing web service
+## 6. Deploy Nginx on the existing web service
+
+Keep the existing **web** service and its `erro.ink` domain, but change its build
+from Railpack to the new Dockerfile:
+
+| Setting | Value |
+| --- | --- |
+| Repository / branch | `blueye51/Erro`, `main` |
+| Root Directory | `/web` |
+| Builder | Dockerfile |
+| Dockerfile Path | `Dockerfile` |
+| Build Command override | Empty; remove the old `npm run build` override. The Dockerfile runs it. |
+| Start Command override | Empty; the image starts Nginx. |
+| Pre-deploy Command | Empty |
+| Healthcheck Path | `/healthz` |
+| Public domain target port | `8080` |
 
 In **web → Variables**, set:
 
 ```dotenv
-VITE_API_BASE_URL=https://${{backend.RAILWAY_PUBLIC_DOMAIN}}
+PORT=8080
+API_UPSTREAM=http://${{backend.RAILWAY_PRIVATE_DOMAIN}}:8080
 ```
 
-This assumes the backend has the generated domain from step 5. Alternatively,
-paste its literal HTTPS origin, such as `https://backend-example.up.railway.app`.
-Do not append `/api/chat` or `:8080`; the frontend appends the path, and Railway
-terminates HTTPS on the public domain. Never use `backend.railway.internal` here:
-visitors' browsers cannot reach Railway's private network.
+Use `http://` for the private upstream, include backend's port, and do not append
+`/api/chat` or a trailing slash. Nginx reads this server-only variable at startup;
+the browser never uses or receives the private address. Railway's private network
+encrypts inter-service traffic. [Private networking details](https://docs.railway.com/networking/private-networking/how-it-works).
 
-Keep the existing web service's root directory `/web` and build command
-`npm run build`. Leave pre-deploy empty. Keep its working Railpack static-site
-serving configuration; do not replace it with the local Vite dev server.
-**Rebuild and deploy web** after changing `VITE_API_BASE_URL`: Vite embeds it in
-the JavaScript bundle during the build. A restart alone does not change it.
-`BACKEND_PROXY_TARGET` is a development-server setting and does not route the
-production static site. No database passwords or AI key belong in web variables.
+Delete **`VITE_API_BASE_URL`** from web and deploy the new image. The client always
+calls `/api/chat` on its own origin. `BACKEND_PROXY_TARGET` is used only by the
+local Vite development server. No AI key or database credentials belong on web.
+After this first migration, changing `API_UPSTREAM` requires a web redeploy to
+load the new runtime setting; the JavaScript does not need rebuilding for it.
+
+Nginx uses the container's private DNS and refreshes cached backend addresses,
+so no resolver variable or extra proxy service is needed. The web-to-backend
+connection stays private and avoids inter-service public egress. Replies to
+visitors and requests to DeepSeek still use public networking. See
+[Railway's egress billing guide](https://docs.railway.com/pricing/understanding-your-bill).
 
 ## 7. Verify the deployed chat
 
-Open `https://erro.ink`, send a short message, and confirm a formatted reply.
-In browser developer tools, Network should show a POST to the backend's HTTPS
-`/api/chat` returning 200 with a JSON `reply`. Refreshing should clear the page's
-messages. No chat tables, Redis keys, or saved conversations are created.
+First open `https://erro.ink/healthz` and confirm `ok`. Then open `https://erro.ink`,
+send a short message, and confirm a formatted reply. In browser developer tools,
+Network should show a POST to **`https://erro.ink/api/chat`**, returning 200 with
+a JSON `reply`. Refreshing should clear the page's messages. No chat tables,
+Redis keys, or saved conversations are created.
 
-To isolate backend issues, substitute the actual backend domain in:
+To test through the same public web proxy:
 
 ```sh
-curl -i 'https://YOUR-BACKEND.up.railway.app/api/chat' \
+curl -i 'https://erro.ink/api/chat' \
   -H 'Content-Type: application/json' \
   -H 'Origin: https://erro.ink' \
   --data '{"message":"Say hello in one sentence."}'
@@ -206,18 +238,23 @@ configured. No provider key is sent from the browser or curl command. The curren
 API has no login or application rate limiter, so public requests use that
 account; CORS is not authentication.
 
+After these checks pass, remove any public domain on the backend service and
+verify chat again. PostgreSQL, Redis, and backend can then remain private.
+
 | Symptom | Check |
 | --- | --- |
 | Backend exits before `Infrastructure ready` | Check runtime logs, service names in references, ready databases, and `S3_ENABLED=false`. Redeploy after dependencies are available. |
 | JDBC URL error | `DATABASE_URL` must start with `jdbc:postgresql://`; do not use the template URL unchanged. |
-| Backend 502 / fails to respond | Backend process must be running and both `PORT` and generated domain target port must be 8080. |
+| Web does not load | Confirm the new web Dockerfile is deployed, custom start/build overrides are empty, and the web domain targets `PORT=8080`. |
+| Nginx 502 / 504 on `/api/chat` | Check backend runtime logs, private service hostname, matching port 8080, and that both services are in the same project/environment. |
 | Browser CORS rejection | Add the exact page origin to backend `CHAT_ALLOWED_ORIGINS`, then redeploy backend. |
-| POST goes to `erro.ink/api/chat` or returns HTML | Set web `VITE_API_BASE_URL`, then rebuild web. |
+| Browser still calls the old backend public URL | Deploy the new web image and reload the page; an old frontend bundle is still being served or open. |
+| `/api/chat` returns the website HTML | The old static host may still be deployed. Confirm web runs the Nginx Dockerfile and proxy configuration. |
 | `AI chat is not configured yet.` | Add `AI_API_KEY` on backend and deploy the variable change. |
 | Provider rejected / unavailable | Check backend key, account access, configured model, and provider limits. See [chat errors](chat.md#api-contract). |
-| Works by curl but not in the page | Check the public URL in the built frontend and CORS; private Railway domains cannot be used by the browser. |
+| `/healthz` works but chat fails | The web healthcheck tests Nginx only; check backend connectivity, provider configuration, and the returned chat error. |
 
-## Local verification of deployment changes
+## Earlier infrastructure verification
 
 Verified on 2026-10-04:
 
@@ -235,3 +272,13 @@ Verified on 2026-10-04:
 
 Railway deployment and a live AI provider call require the user's Railway
 project and provider credentials; neither is available to this workspace.
+
+## Nginx migration verification — 2026-10-04
+
+The web Docker build, frontend lint/build, Compose validation, and six proxy
+regression tests passed. Browser checks exercised the production Nginx image
+with the real Spring Boot backend and a mock AI provider, including errors,
+retries, Markdown, mobile layout, and clearing messages on refresh. Backend
+startup checks again verified PostgreSQL, Redis, and local MinIO. See
+[Web proxy verification](web-proxy.md#results--2026-10-04) for results and limits.
+The actual Railway migration still needs the dashboard steps above.

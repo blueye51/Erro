@@ -39,8 +39,9 @@ Current requirements:
 - No uploads, accounts, tools, streaming, or additional workflows.
 - No new-conversation, history, or attachment controls.
 - Local presentation interactions, such as opening the project note, are fine.
-- Serve assets locally; no third-party fonts or analytics. The browser calls the
-  backend only; the backend holds the AI key and calls the provider.
+- Serve assets locally; no third-party fonts or analytics. The browser calls
+  `/api/chat` on the website's own origin; Nginx forwards to the private backend.
+  The backend holds the AI key and calls the provider.
 - Keep the branding and copy open enough to support a later change of direction.
 
 The displayed possibilities remain ideas, not clickable prompts or working
@@ -59,10 +60,13 @@ The confirmed backend scope is:
 - Use stable releases and Java LTS; pin versions rather than using preview builds.
 - Configure the database, Redis connection, and an AWS SDK S3 client.
 - Verify connections at startup with read-only checks.
-- One chat endpoint and one configurable AI provider service. The initial
-  implementation supports OpenAI's Responses API; the key, endpoint, and model
-  are backend settings. This is an implementation default, not a commitment to
-  a particular provider for future product work.
+- One chat endpoint and one configurable AI provider service using the Responses
+  API format. Eric selected **DeepSeek** on 2026-10-04 and already has an API key.
+  DeepSeek supports this format; the default endpoint is
+  `https://api.deepseek.com/responses` and the default model is `deepseek-flash`.
+  `AI_REASONING_EFFORT=none` disables thinking for the basic chat. The key,
+  endpoint, model, and reasoning effort are backend settings. This provider
+  choice does not fix a future business direction.
 - No entities, application tables, migrations, bucket creation, authentication
   features, saved chats, or conversation management. Chat does not use PostgreSQL,
   Redis, or MinIO for storage.
@@ -83,15 +87,24 @@ See [Railway setup](railway.md) for the complete dashboard procedure and variabl
 
 ## Repository and hosting
 
+Eric decided to keep React and Spring Boot as **separate Railway services** for
+now. Do not bundle the React build into Spring Boot. Eric requested an **Nginx
+reverse proxy**, matching the architecture in his wiki. The web Docker image now
+serves the React build and forwards `/api/*` to the runtime `API_UPSTREAM` address.
+React still runs in the browser and uses relative API paths. The implementation
+is verified locally; Railway migration is not verified. See [Web proxy](web-proxy.md).
+
 - Repository: <https://github.com/blueye51/Erro>.
 - `develop` is the working branch; `main` is used for the Railway deployment.
 - The website domain is **erro.ink**.
-- Railway builds the `web/` directory with Railpack and `npm run build`.
-- The planned Railway backend builds `backend/Dockerfile` with root directory
-  `/backend`. Browser chat calls its public HTTPS domain; PostgreSQL and Redis
-  are reached through Railway's private network in the same project/environment.
-- Root `compose.yaml` runs Vite at <http://localhost:5173> with live updates,
-  plus the backend, PostgreSQL, Redis, and local MinIO.
+- Railway web should build `web/Dockerfile` with root directory `/web`, replacing
+  the earlier Railpack deployment. Its public domain remains `erro.ink`.
+- Railway backend builds `backend/Dockerfile` with root directory `/backend`.
+  Nginx reaches it privately; PostgreSQL and Redis also use the private network
+  in the same project/environment. A separate backend public domain is unnecessary.
+- Root `compose.yaml` runs Nginx at <http://localhost:5173>, plus the backend,
+  PostgreSQL, Redis, and local MinIO. The optional `dev` profile runs Vite with
+  live updates at <http://localhost:5174>.
 - See the [root README](../README.md) for local setup and checks.
 
 ## Guidance for future AI work

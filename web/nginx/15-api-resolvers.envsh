@@ -1,0 +1,21 @@
+#!/bin/sh
+# Sourced by the nginx entrypoint before it expands default.conf.template.
+# Use Railway/Docker's DNS, including IPv6 resolvers, for private service names.
+API_DNS_RESOLVERS=$(awk '
+  $1 == "nameserver" && $2 ~ /^[0-9a-fA-F:.]+$/ {
+    address = $2
+    if (index(address, ":")) address = "[" address "]"
+    printf "%s%s", separator, address
+    separator = " "
+  }
+' /etc/resolv.conf)
+if [ -z "$API_DNS_RESOLVERS" ]; then
+    echo "No DNS nameserver found in /etc/resolv.conf" >&2
+    exit 1
+fi
+# An origin without a path preserves /api, query strings, and request bodies.
+if ! printf '%s\n' "$API_UPSTREAM" | grep -Eq '^http://([a-zA-Z0-9][a-zA-Z0-9.-]*|\[[0-9a-fA-F:]+\]):[0-9]+$'; then
+    echo "API_UPSTREAM must be an HTTP origin with a port, without a path or trailing slash" >&2
+    exit 1
+fi
+export API_DNS_RESOLVERS

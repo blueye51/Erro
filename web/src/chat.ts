@@ -1,9 +1,7 @@
-const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
-
 export async function sendMessage(message: string): Promise<string> {
   let response: Response
   try {
-    response = await fetch(`${apiBaseUrl}/api/chat`, {
+    response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message }),

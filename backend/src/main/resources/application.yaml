@@ -38,8 +38,9 @@ chat:
   allowed-origins: ${CHAT_ALLOWED_ORIGINS:http://localhost:5173}
 
 ai:
-  endpoint: ${AI_ENDPOINT:https://api.openai.com/v1/responses}
+  endpoint: ${AI_ENDPOINT:https://api.deepseek.com/responses}
   api-key: ${AI_API_KEY:}
-  model: ${AI_MODEL:gpt-5.4-mini}
+  model: ${AI_MODEL:deepseek-flash}
+  reasoning-effort: ${AI_REASONING_EFFORT:none}
   max-output-tokens: ${AI_MAX_OUTPUT_TOKENS:2048}
   timeout: ${AI_TIMEOUT:60s}
