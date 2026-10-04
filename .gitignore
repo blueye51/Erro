@@ -1,0 +1,6 @@
+.env
+.env.*
+!.env.example
+backend/target/
+backend/.idea/
+*.iml

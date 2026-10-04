@@ -1,7 +1,9 @@
+import { useEffect, useRef, useState } from 'react'
+import Markdown from 'react-markdown'
+import { sendMessage } from './chat'
 import './App.css'
 
 const iconPaths = {
-  plus: <path d="M12 5v14M5 12h14" />,
   chat: <path d="M20 11.5a8 8 0 0 1-8 8H4l1.6-4A8 8 0 1 1 20 11.5Z" />,
   arrow: <path d="M12 19V5m-6 6 6-6 6 6" />,
   bolt: <path d="m13 3-8 11h6l-1 7 9-12h-6l1-6Z" />,
@@ -59,8 +61,45 @@ const possibilities = [
 ] as const
 
 function App() {
+  const [draft, setDraft] = useState('')
+  const [messages, setMessages] = useState<{ id: number; role: 'user' | 'assistant'; text: string }[]>([])
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState('')
+  const sending = useRef(false)
+  const nextId = useRef(0)
+  const messageEnd = useRef<HTMLDivElement>(null)
+  const composer = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    messageEnd.current?.scrollIntoView({ block: 'nearest' })
+  }, [messages, pending])
+
+  async function submitMessage() {
+    const text = draft.trim()
+    if (!text || sending.current) return
+    sending.current = true
+    setPending(true)
+    setError('')
+    const id = nextId.current++
+    setMessages((current) => [...current, { id, role: 'user', text }])
+    setDraft('')
+    try {
+      const reply = await sendMessage(text)
+      const replyId = nextId.current++
+      setMessages((current) => [...current, { id: replyId, role: 'assistant', text: reply }])
+    } catch (failure) {
+      setMessages((current) => current.filter((message) => message.id !== id))
+      setDraft(text)
+      setError(failure instanceof Error ? failure.message : 'Something went wrong. Please try again.')
+    } finally {
+      sending.current = false
+      setPending(false)
+      composer.current?.focus()
+    }
+  }
+
   return (
-    <div className="workspace">
+    <div className={`workspace${messages.length ? ' is-chatting' : ''}`}>
       <a className="skip-link" href="#main">
         Skip to content
       </a>
@@ -73,30 +112,14 @@ function App() {
           <span>E.R.R.O.</span>
         </a>
 
-        <button
-          className="new-chat"
-          type="button"
-          disabled
-          title="Conversations are coming soon"
-        >
-          <Icon name="plus" />
-          New conversation
-          <span className="soon-label">Soon</span>
-        </button>
-
         <nav className="workspace-nav" aria-label="Workspace">
           <p className="section-label">Your workspace</p>
           <a className="current-conversation" href="#main" aria-current="page">
             <Icon name="chat" />
-            A new beginning
+            Chat
             <span className="nav-dot" />
           </a>
         </nav>
-
-        <div className="conversation-history">
-          <p className="section-label">Conversations</p>
-          <p className="history-placeholder">A blank page, for now.</p>
-        </div>
 
         <div className="sidebar-bottom">
           <details className="project-note">
@@ -128,7 +151,7 @@ function App() {
       <main className="main-panel" id="main" tabIndex={-1}>
         <header className="workspace-header">
           <span className="desktop-header">
-            The workspace <span>/</span> <strong>A new beginning</strong>
+            The workspace <span>/</span> <strong>Chat</strong>
           </span>
           <a className="mobile-brand" href="#main" aria-label="E.R.R.O. home">
             <BrandMark />
@@ -140,8 +163,8 @@ function App() {
           </span>
         </header>
 
-        <div className="chat-content">
-          <section className="welcome" aria-labelledby="welcome-title">
+        <div className={`chat-content${messages.length ? ' has-messages' : ''}`}>
+          {!messages.length && <section className="welcome" aria-labelledby="welcome-title">
             <div className="welcome-mark">
               <BrandMark />
             </div>
@@ -156,51 +179,77 @@ function App() {
               <br className="desktop-break" /> Welcome to the beginning of
               E.R.R.O.
             </p>
-          </section>
+          </section>}
 
-          <section
+          {messages.length > 0 && <section className="message-list" role="log" tabIndex={0} aria-label="Chat messages" aria-live="polite" aria-relevant="additions text">
+            {messages.map((message) => (
+              <article className={`message message-${message.role}`} key={message.id}>
+                <h2 className="message-author">{message.role === 'user' ? 'You' : 'E.R.R.O. AI'}</h2>
+                <div className="message-body">
+                  {message.role === 'user' ? <p>{message.text}</p> : (
+                    <Markdown
+                      skipHtml
+                      components={{
+                        img: ({ alt }) => <span>{alt}</span>,
+                        pre: ({ children }) => <pre tabIndex={0} aria-label="Code block">{children}</pre>,
+                        a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>,
+                      }}
+                    >{message.text}</Markdown>
+                  )}
+                </div>
+              </article>
+            ))}
+            {pending && <p className="reply-pending" role="status">Thinking…</p>}
+            <div ref={messageEnd} />
+          </section>}
+
+          <form
             className="chat-composer"
-            aria-label="Chat preview"
+            aria-label="Send a message"
             aria-describedby="chat-status"
+            onSubmit={(event) => { event.preventDefault(); void submitMessage() }}
           >
             <label className="sr-only" htmlFor="message">
-              Message E.R.R.O. — coming soon
+              Message E.R.R.O.
             </label>
             <textarea
               id="message"
               rows={2}
               placeholder="A place for your next idea…"
-              disabled
+              ref={composer}
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+                  event.preventDefault()
+                  void submitMessage()
+                }
+              }}
+              readOnly={pending}
+              maxLength={8000}
               aria-describedby="chat-status"
             />
             <div className="composer-toolbar">
-              <button
-                className="attachment-button"
-                type="button"
-                disabled
-                aria-label="Add attachment (coming soon)"
-              >
-                <Icon name="plus" />
-              </button>
               <span className="composer-status">
                 <span />
-                Chat is coming soon
+                {pending ? 'Waiting for a reply' : 'Ask something, explore an idea'}
               </span>
               <button
                 className="send-button"
-                type="button"
-                disabled
-                aria-label="Send message (coming soon)"
+                type="submit"
+                disabled={pending || !draft.trim()}
+                aria-label="Send message"
               >
                 <Icon name="arrow" />
               </button>
             </div>
-          </section>
+          </form>
+          {error && <p className="chat-error" role="alert">{error}</p>}
           <p className="chat-status" id="chat-status">
-            Just a first look. Messaging isn’t available yet.
+            Each message starts fresh. This page clears when you leave or refresh.
           </p>
 
-          <section
+          {!messages.length && <section
             className="possibilities"
             aria-labelledby="possibilities-title"
           >
@@ -218,7 +267,7 @@ function App() {
                 </li>
               ))}
             </ul>
-          </section>
+          </section>}
         </div>
 
         <footer className="workspace-footer">

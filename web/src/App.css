@@ -31,32 +31,6 @@
   width: 31px;
   height: 31px;
 }
-.new-chat {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 13px 12px;
-  width: 100%;
-  border: 1px solid #d5ddcf;
-  border-radius: 9px;
-  background: transparent;
-  color: #63705f;
-  font-size: 12px;
-  font-weight: 500;
-  text-align: left;
-}
-.new-chat svg {
-  width: 17px;
-  height: 17px;
-}
-.soon-label {
-  margin-left: auto;
-  padding: 3px 5px;
-  border-radius: 4px;
-  font-size: 9px;
-  background: #e6eade;
-  color: #65715f;
-}
 
 .section-label {
   color: var(--text-soft);
@@ -69,8 +43,7 @@
 .workspace-nav {
   margin-top: 38px;
 }
-.workspace-nav .section-label,
-.conversation-history .section-label {
+.workspace-nav .section-label {
   margin-left: 12px;
 }
 .current-conversation {
@@ -96,14 +69,6 @@
   margin-left: auto;
   border-radius: 50%;
   background: #70976d;
-}
-.conversation-history {
-  margin-top: 35px;
-}
-.history-placeholder {
-  margin: 14px 12px;
-  font-size: 12px;
-  color: var(--text-soft);
 }
 .sidebar-bottom {
   margin-top: auto;
@@ -309,11 +274,10 @@
   border: 0;
   outline: none;
   background: transparent;
-  color: #7d8777;
+  color: #28372f;
   font-size: 14px;
   line-height: 1.6;
   opacity: 1;
-  -webkit-text-fill-color: #7d8777;
 }
 .chat-composer textarea::placeholder {
   color: #7d8777;
@@ -323,21 +287,6 @@
   display: flex;
   align-items: center;
   gap: 11px;
-}
-.attachment-button {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  border: 0;
-  border-radius: 7px;
-  background: #f6f7f3;
-  color: #a0a798;
-}
-.attachment-button svg {
-  width: 17px;
-  height: 17px;
 }
 .composer-status {
   display: flex;
@@ -367,6 +316,124 @@
 .send-button svg {
   width: 18px;
   height: 18px;
+}
+.send-button:not(:disabled) {
+  background: var(--green);
+  border-color: var(--green);
+  color: white;
+  cursor: pointer;
+}
+.send-button:not(:disabled):hover {
+  background: #344f3e;
+}
+.chat-composer:focus-within {
+  border-color: var(--green);
+}
+.chat-error {
+  color: #9b3434;
+  font-size: 13px;
+  line-height: 1.6;
+  margin-top: 12px;
+}
+.is-chatting .main-panel {
+  height: 100dvh;
+}
+.is-chatting .workspace-header,
+.is-chatting .workspace-footer {
+  flex-shrink: 0;
+}
+.chat-content.has-messages {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  margin: 0 auto;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+.has-messages .chat-composer {
+  flex-shrink: 0;
+  margin-top: 18px;
+}
+.message-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px 12px 8px 0;
+  scrollbar-width: thin;
+}
+.message {
+  min-width: 0;
+  margin-bottom: 24px;
+}
+.message-user {
+  padding: 16px 20px;
+  background: #edf1e7;
+  border-radius: 14px;
+}
+.message-assistant {
+  padding: 4px 4px 12px;
+}
+.message-author {
+  font-size: 11px;
+  color: var(--green);
+  font-weight: 650;
+  margin-bottom: 10px;
+}
+.message-body {
+  font-size: 14px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.message-user .message-body {
+  white-space: pre-wrap;
+}
+.message-body > * + * {
+  margin-top: 12px;
+}
+.message-body h1,
+.message-body h2,
+.message-body h3 {
+  font-size: 18px;
+  line-height: 1.5;
+}
+.message-body ul,
+.message-body ol {
+  padding-left: 24px;
+}
+.message-body pre {
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 14px;
+  background: #edf1e7;
+  border-radius: 8px;
+  white-space: pre;
+}
+.message-body code {
+  font-size: 12px;
+  background: #edf1e7;
+  border-radius: 3px;
+}
+.message-list:focus-visible,
+.message-body pre:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: -2px;
+}
+.message-body blockquote {
+  margin-left: 0;
+  padding-left: 16px;
+  border-left: 3px solid #b6c5ab;
+  color: var(--text-muted);
+}
+.message-body a {
+  color: var(--green);
+  text-underline-offset: 3px;
+}
+.reply-pending {
+  padding: 0 4px 20px;
+  font-size: 13px;
+  color: var(--text-muted);
 }
 .chat-status {
   margin-top: 12px;
@@ -454,10 +521,6 @@
   }
   .brand {
     margin-left: 10px;
-  }
-  .new-chat {
-    font-size: 11px;
-    gap: 7px;
   }
   .workspace-header {
     padding-inline: 28px;

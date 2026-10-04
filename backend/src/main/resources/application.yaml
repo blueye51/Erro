@@ -1,0 +1,45 @@
+spring:
+  application:
+    name: erro-backend
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/erro}
+    username: ${DATABASE_USERNAME:erro}
+    password: ${DATABASE_PASSWORD}
+    hikari:
+      maximum-pool-size: 5
+      connection-timeout: 10000
+  sql:
+    init:
+      mode: never
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
+      connect-timeout: 5s
+      timeout: 5s
+      repositories:
+        enabled: false
+
+storage:
+  s3:
+    enabled: ${S3_ENABLED:true}
+    endpoint: ${S3_ENDPOINT:}
+    region: ${AWS_REGION:us-east-1}
+    path-style-access: ${S3_PATH_STYLE_ACCESS:false}
+
+infrastructure:
+  verify-on-startup: ${INFRASTRUCTURE_VERIFY_ON_STARTUP:true}
+
+server:
+  port: ${PORT:8080}
+
+chat:
+  allowed-origins: ${CHAT_ALLOWED_ORIGINS:http://localhost:5173}
+
+ai:
+  endpoint: ${AI_ENDPOINT:https://api.openai.com/v1/responses}
+  api-key: ${AI_API_KEY:}
+  model: ${AI_MODEL:gpt-5.4-mini}
+  max-output-tokens: ${AI_MAX_OUTPUT_TOKENS:2048}
+  timeout: ${AI_TIMEOUT:60s}
