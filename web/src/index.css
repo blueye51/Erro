@@ -5,13 +5,13 @@
     BlinkMacSystemFont,
     sans-serif;
   color: #28372f;
-  background: #fafbf8;
+  background: #fafaf4;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color-scheme: light;
-  --text-muted: #68736b;
+  --text-muted: #626d65;
   --text-soft: #606e5a;
   --green: #456951;
   --border: #e4e8df;
@@ -19,6 +19,25 @@
 
 * {
   box-sizing: border-box;
+}
+html {
+  scroll-behavior: smooth;
+}
+section[id] {
+  scroll-margin-top: 24px;
+}
+main:focus {
+  outline: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+  }
 }
 body {
   margin: 0;

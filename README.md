@@ -1,7 +1,8 @@
 # E.R.R.O.
 
-A project by Eric and Robin, starting with a React + TypeScript chat interface
-in `web`. Visitors can send a message to the Java/Maven Spring Boot backend in
+A project by Eric Rand and Robin Robert Antonis, with a React + TypeScript
+homepage in `web`: introduction, About us, Contact, and an expandable AI corner.
+Visitors can send a message to the Java/Maven Spring Boot backend in
 `backend/`, which calls the configured AI provider and returns a formatted reply.
 Each message is independent; nothing is saved and there are no separate
 conversations. PostgreSQL, Redis, and local MinIO are connected for future work.
@@ -9,6 +10,7 @@ conversations. PostgreSQL, Redis, and local MinIO are connected for future work.
 Read [the project context](docs/project-context.md) for the background, possible
 future directions, and guidance for AI assistants. The direction is still open;
 electrical work, marketing, AI, and a future portfolio are possibilities.
+See [Homepage](docs/homepage.md) for the founder photos, draft copy, and contact.
 
 ## Run with Docker Compose
 

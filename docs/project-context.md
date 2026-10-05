@@ -1,10 +1,10 @@
 # E.R.R.O. project context
 
-Last updated: 2026-10-04
+Last updated: 2026-10-05
 
 ## People and name
 
-E.R.R.O. is a shared project by **Eric and Robin**. Eric is the repository owner
+E.R.R.O. is a shared project by **Eric Rand and Robin Robert Antonis**. Eric is the repository owner
 and the person working with the AI assistant. Robin is Eric's friend. The name
 comes from their names; no expanded phrase or other acronym has been agreed.
 
@@ -27,6 +27,17 @@ or promises about what Eric or Robin can provide.
 Eric has now requested a working, minimal AI chat in the existing branded,
 responsive interface. This explicitly replaces the earlier inactive preview.
 
+On 2026-10-05, Eric requested a homepage as the initial experience, with top
+navigation for Home, About us, and Contact. About us uses the supplied
+`photos/eric.png` for Eric Rand and `photos/robin.png` for Robin Robert Antonis,
+copied into `web/public/photos/` for frontend deployment. Eric authorized
+provisional copy about two young entrepreneurs with big dreams; the individual
+bios are draft presentation copy, not verified background or agreed roles.
+Contact uses Eric's supplied `eric.rand66@gmail.com` address with mailto links.
+Chat remains available in an initially collapsed AI corner below About us.
+The homepage does not confirm a business direction. See [Homepage](homepage.md)
+for usage, assets, and verification.
+
 Current requirements:
 
 - React and TypeScript on Vite, in `web/`, connected to `POST /api/chat`.
@@ -44,8 +55,8 @@ Current requirements:
   The backend holds the AI key and calls the provider.
 - Keep the branding and copy open enough to support a later change of direction.
 
-The displayed possibilities remain ideas, not clickable prompts or working
-tools. The page identifies E.R.R.O. as a project by Eric and Robin. Working chat
+Possible future directions remain ideas rather than product commitments.
+The page identifies E.R.R.O. as a project by Eric and Robin. Working chat
 does not confirm an electrical, marketing, or other business direction.
 See [Chat](chat.md) for the API contract, provider setup, and verification.
 

@@ -9,6 +9,9 @@ PostgreSQL, Redis, local MinIO, and the planned switch to Amazon S3.
 [Chat](chat.md) covers the stateless AI flow, API contract, DeepSeek configuration,
 frontend behavior, deployment settings, and verification.
 
+[Homepage](homepage.md) covers the introduction, founder photos and draft bios,
+top navigation, email contact, expandable AI corner, and frontend verification.
+
 [Web proxy](web-proxy.md) covers the Nginx image, private API forwarding, runtime
 variables, local production/development modes, and proxy regression tests.
 

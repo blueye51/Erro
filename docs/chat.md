@@ -8,6 +8,11 @@ configuration. No provider account or cloud resources are created by this change
 
 ## How it works
 
+Chat is now in the homepage's **AI corner**, below About us. Open the
+“What’s on your mind?” panel to use it. Home, About us, and Contact remain
+available while chatting. Collapsing the panel keeps its messages in memory;
+refreshing clears them. See [Homepage](homepage.md) for the surrounding interface.
+
 1. The visitor types a message and presses Send or Enter. Shift+Enter adds a line.
 2. React sends only `{ "message": "..." }` to `POST /api/chat`.
 3. Spring validates the message, then `AiService` sends it to the configured
