@@ -106,7 +106,7 @@ REDIS_PASSWORD=${{Redis.REDISPASSWORD}}
 SPRING_DATA_REDIS_USERNAME=${{Redis.REDISUSER}}
 S3_ENABLED=false
 INFRASTRUCTURE_VERIFY_ON_STARTUP=true
-CHAT_ALLOWED_ORIGINS=https://erro.ink
+CHAT_ALLOWED_ORIGINS=https://erro.ink,https://www.erro.ink
 AI_ENDPOINT=https://api.deepseek.com/responses
 AI_MODEL=deepseek-flash
 AI_REASONING_EFFORT=none
@@ -138,15 +138,16 @@ the default Railway Redis user is supplied by the template's `REDISUSER`.
 check. No `AWS_*` or MinIO credentials are needed. PostgreSQL and Redis checks
 remain enabled; a failed connection stops startup.
 
-If visitors also use the generated web domain or `www.erro.ink`, append their
-exact HTTPS origins, separated by commas, to `CHAT_ALLOWED_ORIGINS`. For example:
+Both `erro.ink` and `www.erro.ink` serve the website, so keep both exact HTTPS
+origins in `CHAT_ALLOWED_ORIGINS`. If visitors also use the generated web domain,
+append its exact HTTPS origin, separated by a comma. For example:
 
 ```dotenv
-CHAT_ALLOWED_ORIGINS=https://erro.ink,https://web-example.up.railway.app
+CHAT_ALLOWED_ORIGINS=https://erro.ink,https://www.erro.ink,https://web-example.up.railway.app
 ```
 
 Replace the example with the actual **web** domain. Origins contain no path or
-trailing slash. Only include `www.erro.ink` if that domain is configured and used.
+trailing slash.
 Apply/deploy staged variable changes; editing a variable alone does not update
 an existing container. See [Railway variable references](https://docs.railway.com/variables).
 
@@ -255,6 +256,22 @@ verify chat again. PostgreSQL, Redis, and backend can then remain private.
 | `/healthz` works but chat fails | The web healthcheck tests Nginx only; check backend connectivity, provider configuration, and the returned chat error. |
 
 ## Earlier infrastructure verification
+
+### Live www origin diagnosis — 2026-10-05
+
+Both HTTPS domains returned 200 for the website. An empty-message POST to
+`/api/chat` with `Origin: https://www.erro.ink` returned 403 with
+`Invalid CORS request`; the same request with `Origin: https://erro.ink`
+returned the expected 400 JSON validation error and allowed-origin header.
+These checks did not call the AI provider. Requests reach the backend through
+both domains, but the www origin is rejected by the deployed CORS configuration.
+
+To fix the deployment, append `https://www.erro.ink` to the backend's existing
+`CHAT_ALLOWED_ORIGINS` value, retaining any other required origins, and deploy
+the variable change. Repeat the empty-message check: www should return 400
+JSON with `Access-Control-Allow-Origin: https://www.erro.ink`, then verify a
+normal chat reply in the browser. This workspace's Railway CLI is unauthorized;
+the live variable change and post-fix verification have not been performed.
 
 Verified on 2026-10-04:
 
