@@ -1,6 +1,6 @@
 # E.R.R.O. project context
 
-Last updated: 2026-10-05
+Last updated: 2026-10-06
 
 ## People and name
 
@@ -11,90 +11,67 @@ comes from their names; no expanded phrase or other acronym has been agreed.
 They want a starting point for making a project together. They do not yet have
 a fixed business plan, product specification, or final direction.
 
-## Ideas being explored
+## Confirmed product direction — 2026-10-05
 
-Possible directions include electrical work, marketing, and AI that could help
-with electrical topics or tasks. These are initial ideas, not confirmed services
-or product commitments. The site might instead become a portfolio or a home for
-their future projects. Other directions remain possible.
+Eric has now requested an electrical equipment/component selection assistant with
+retrieval from a curated knowledge base, deterministic calculations and validation,
+source citations and preparation for a manufacturer product catalog. The initial
+market is Estonia/EU. This supersedes the earlier minimal stateless-chat-only
+scope and the earlier uncertainty about an electrical product direction. It does
+not establish business credentials, customers, guaranteed compliance or a finished
+purchasing service.
 
-Do not present E.R.R.O. as an established business, a working AI assistant, or a
-finished product. Do not invent credentials, customers, projects, testimonials,
-or promises about what Eric or Robin can provide.
+The existing Spring Boot/React architecture and deployed Railway application are
+to be extended, not rebuilt. The frontend remains provisional, but this task
+explicitly preserves its visual design and adds answer details and protected
+knowledge management. Removing/replacing the frontend remains a separate future
+task, not part of the knowledge implementation.
 
-## Current website
+## Current application
 
-Eric has now requested a working, minimal AI chat in the existing branded,
-responsive interface. This explicitly replaces the earlier inactive preview.
+- React/TypeScript/Vite in `web/`, Spring Boot/Java/Maven in `backend/`.
+- Existing `POST /api/chat` now runs intent/parameter extraction, bounded knowledge
+  retrieval, deterministic electrical checks, optional catalog retrieval and AI
+  generation. It retains `reply` and adds structured sources/calculations/warnings.
+- Messages and active problem context exist only in page memory. Up to eight
+  previous user inputs (24,000 characters total) may be supplied for follow-ups.
+  No assistant-generated ratings are reused as user input. New problem and refresh
+  clear context; obvious topic changes also reset it. There is no saved chat,
+  conversation database, visitor account system or browser storage.
+- The existing homepage retains Eric/Robin's supplied photos and draft bios,
+  Home/About us/Contact navigation, supplied contact address and expandable chat.
+  See [Homepage](homepage.md) for its presentation history.
+- The knowledge admin UI is at `/#knowledge`. A backend-only operator token gates
+  every `/api/admin` endpoint. No existing authentication system was present.
+- Sources, chunks and product/catalog relationships persist in PostgreSQL under
+  the dedicated `erro_knowledge` schema using Flyway migrations. Chat content is
+  not persisted. Redis and S3 do not store chat or knowledge content.
+- A small starter library includes source/scope metadata and two attributed open
+  theory summaries. Full copyrighted standards are not included. Owner-licensed
+  standards/manufacturer content require explicit indexing and provider-processing
+  rights. Markdown/text ingestion is implemented; URL downloads and PDFs are not.
+- DeepSeek remains the configured chat provider using the Responses API shape.
+  AI secrets stay in backend environment configuration. Embeddings are optional
+  and independently configured; keyword retrieval works without an embedding key.
+- Do not fabricate product specifications, compatibility, standard clauses or
+  compliance. The source corpus must be curated. Metadata-only standards cannot
+  establish full requirements. Electrical assistance is not a purchase approval.
 
-On 2026-10-05, Eric requested a homepage as the initial experience, with top
-navigation for Home, About us, and Contact. About us uses the supplied
-`photos/eric.png` for Eric Rand and `photos/robin.png` for Robin Robert Antonis,
-copied into `web/public/photos/` for frontend deployment. Eric authorized
-provisional copy about two young entrepreneurs with big dreams; the individual
-bios are draft presentation copy, not verified background or agreed roles.
-Contact uses Eric's supplied `eric.rand66@gmail.com` address with mailto links.
-Chat remains available in an initially collapsed AI corner below About us.
-The homepage does not confirm a business direction. See [Homepage](homepage.md)
-for usage, assets, and verification.
+See [Electrical knowledge](knowledge.md) for architecture, administration,
+licensing, source ingestion, catalog DTOs, configuration and verification limits.
 
-Current requirements:
+## Backend infrastructure
 
-- React and TypeScript on Vite, in `web/`, connected to `POST /api/chat`.
-- A visitor sends a message; the backend calls the configured AI provider,
-  extracts the assistant's reply, and returns it for display as Markdown.
-- Each request contains only the new message. No earlier messages, conversation
-  identifiers, or provider response IDs are sent as context.
-- Messages exist only in React state while the page is open. Refreshing clears
-  them. No saved history, different conversations, or browser/server persistence.
-- No uploads, accounts, tools, streaming, or additional workflows.
-- No new-conversation, history, or attachment controls.
-- Local presentation interactions, such as opening the project note, are fine.
-- Serve assets locally; no third-party fonts or analytics. The browser calls
-  `/api/chat` on the website's own origin; Nginx forwards to the private backend.
-  The backend holds the AI key and calls the provider.
-- Keep the branding and copy open enough to support a later change of direction.
+The foundation remains Java 25, Spring Boot, PostgreSQL 18, Redis and an AWS SDK
+S3 client under Docker Compose. Startup checks verify PostgreSQL, Redis and S3
+when enabled; Flyway now creates the knowledge/catalog schema first. The user's
+latest instruction confirms an existing Railway deployment with connected
+PostgreSQL. Its live configuration has not been independently inspected here.
 
-Possible future directions remain ideas rather than product commitments.
-The page identifies E.R.R.O. as a project by Eric and Robin. Working chat
-does not confirm an electrical, marketing, or other business direction.
-See [Chat](chat.md) for the API contract, provider setup, and verification.
-
-## Backend foundation
-
-Eric has explicitly requested a Java/Maven Spring Boot backend in `backend/`,
-connected to PostgreSQL 18, Redis, and MinIO through Docker Compose. The later
-chat request adds an HTTP API and an AI service to that foundation.
-
-The confirmed backend scope is:
-
-- Use stable releases and Java LTS; pin versions rather than using preview builds.
-- Configure the database, Redis connection, and an AWS SDK S3 client.
-- Verify connections at startup with read-only checks.
-- One chat endpoint and one configurable AI provider service using the Responses
-  API format. Eric selected **DeepSeek** on 2026-10-04 and already has an API key.
-  DeepSeek supports this format; the default endpoint is
-  `https://api.deepseek.com/responses` and the default model is `deepseek-flash`.
-  `AI_REASONING_EFFORT=none` disables thinking for the basic chat. The key,
-  endpoint, model, and reasoning effort are backend settings. This provider
-  choice does not fix a future business direction.
-- No entities, application tables, migrations, bucket creation, authentication
-  features, saved chats, or conversation management. Chat does not use PostgreSQL,
-  Redis, or MinIO for storage.
-
-Eric chose the final MinIO community release for **local development only**, with
-the intention to switch to **Amazon S3 later**. The community server is archived;
-the Compose image builds the final release from its pinned source. Use the AWS
-S3 client so that a future switch uses storage configuration rather than a
-MinIO-specific application SDK. See [Infrastructure](infrastructure.md) for
-versions and local commands.
-
-Eric has also requested Railway setup guidance for adding the backend,
-PostgreSQL 18, and Redis alongside the existing web service. Disable S3 on
-Railway for now with `S3_ENABLED=false`; PostgreSQL and Redis startup checks
-remain enabled. The deployment guide and configuration are prepared locally;
-Railway resources have not been created or verified from this workspace.
-See [Railway setup](railway.md) for the complete dashboard procedure and variables.
+The final MinIO community release is local development only; Amazon S3 remains
+a future plan. Railway uses `S3_ENABLED=false` until storage is needed. No bucket
+creation or uploads are added. See [Infrastructure](infrastructure.md) and
+[Railway setup](railway.md).
 
 ## Repository and hosting
 
@@ -120,15 +97,12 @@ is verified locally; Railway migration is not verified. See [Web proxy](web-prox
 
 ## Guidance for future AI work
 
-Read this document before proposing features or changing the site's identity.
-Treat Eric and Robin's uncertainty as intentional. Ask about consequential
-product decisions instead of selecting a business model on their behalf.
-
-Keep working chat limited to the confirmed request/reply flow. Do not add memory,
-saved conversations, authentication, tracking, or an electrical advice workflow
-just because the page resembles a chat product. Record later decisions here so
-future work builds on confirmed direction.
+Read this context and [Electrical knowledge](knowledge.md) before extending the
+assistant. Keep source authority, law/standards, manufacturer specifications,
+calculation results and generated explanation distinct. Expand the curated corpus
+and tested extraction rules deliberately. Saved chats, visitor accounts, tools,
+PDF/URL import and purchasing are not implemented and need explicit future scope.
 
 Eric requires all new work to be documented in `docs/` as part of the change.
-Keep setup, configuration, workflows, decisions, and verification notes current;
+Keep setup, configuration, workflows, decisions and verification notes current;
 see the [documentation policy](README.md#documentation-policy).

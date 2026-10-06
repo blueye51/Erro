@@ -1,8 +1,8 @@
 # Local infrastructure
 
 The backend is a Spring Boot application with JDBC, Redis, and an AWS SDK S3
-client. It also serves the stateless AI [chat API](chat.md), using Spring MVC and
-Tomcat on port 8080. Chat does not store data in the infrastructure services.
+client. It also serves the AI [chat API](chat.md), using Spring MVC and
+Tomcat on port 8080. Chat content is not stored. Knowledge/catalog data use Flyway-managed PostgreSQL tables; see [Electrical knowledge](knowledge.md).
 
 ## Where things live
 
@@ -66,7 +66,7 @@ Maven installation is required for the Compose workflow.
 The backend waits for healthy PostgreSQL, Redis, and MinIO containers, then
 verifies a JDBC connection, Redis `PING`, and authenticated S3 `ListBuckets`.
 Look for `Infrastructure ready` in its logs. A failed connection aborts startup.
-These checks do not create application tables, Redis keys, buckets, or objects.
+These checks are read-only. Flyway separately creates the `erro_knowledge` application schema on startup.
 The embedded HTTP server keeps the backend running afterward.
 The checks happen once at startup, not as continuous monitoring.
 
@@ -165,8 +165,7 @@ JDBC uses a Hikari pool capped at five connections with a 10-second acquisition
 timeout. Redis connection and command timeouts are five seconds. The S3 client
 uses the URL connection HTTP client, a five-second connection timeout, a
 10-second socket and attempt timeout, and a 30-second total call timeout. SQL
-initialization and Redis repository discovery are disabled; there is no schema
-or repository layer yet.
+initialization and Redis repository discovery are disabled; Flyway manages the knowledge/catalog schema and JDBC repositories query it.
 
 ## Maven and host development
 

@@ -21,6 +21,14 @@ import tools.jackson.databind.JsonNode;
 @Service
 @EnableConfigurationProperties(AiProperties.class)
 public class AiService {
+    private static final String SYSTEM_INSTRUCTION = loadInstruction();
+    private static String loadInstruction() {
+        try (var stream = AiService.class.getResourceAsStream("/knowledge/electrical-system.txt")) {
+            if (stream == null) throw new IllegalStateException("Missing electrical system instruction");
+            return new String(stream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        } catch (java.io.IOException ex) { throw new IllegalStateException("Cannot load electrical system instruction", ex); }
+    }
+    public static String systemInstruction() { return SYSTEM_INSTRUCTION; }
     private final AiProperties properties;
     private final RestClient client;
 
@@ -41,6 +49,7 @@ public class AiService {
         var request = new LinkedHashMap<String, Object>();
         request.put("model", properties.model());
         request.put("input", message);
+        request.put("instructions", SYSTEM_INSTRUCTION);
         request.put("store", false);
         request.put("max_output_tokens", properties.maxOutputTokens());
         if (properties.reasoningEffort() != null && !properties.reasoningEffort().isBlank()) {

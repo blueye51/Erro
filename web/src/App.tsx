@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import Markdown from 'react-markdown'
-import { sendMessage } from './chat'
+import { sendMessage, type ChatReply } from './chat'
+import { AnswerDetails } from './AnswerDetails'
+import { KnowledgeAdmin } from './KnowledgeAdmin'
 import './App.css'
 
 function Arrow({ diagonal = false }: { diagonal?: boolean }) {
@@ -49,11 +51,12 @@ const founders = [
 function Chat() {
   const [draft, setDraft] = useState('')
   const [messages, setMessages] = useState<
-    { id: number; role: 'user' | 'assistant'; text: string }[]
+    { id: number; role: 'user' | 'assistant'; text: string; answer?: ChatReply }[]
   >([])
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
   const sending = useRef(false)
+  const problemContext = useRef<string[]>([])
   const nextId = useRef(0)
   const messageList = useRef<HTMLElement>(null)
   const composer = useRef<HTMLTextAreaElement>(null)
@@ -73,11 +76,13 @@ function Chat() {
     setMessages((current) => [...current, { id, role: 'user', text }])
     setDraft('')
     try {
-      const reply = await sendMessage(text)
+      const answer = await sendMessage(text, problemContext.current)
+      problemContext.current = [...(answer.contextReset ? [] : problemContext.current), text].slice(-8)
+      while (problemContext.current.join('').length > 24000) problemContext.current.shift()
       const replyId = nextId.current++
       setMessages((current) => [
         ...current,
-        { id: replyId, role: 'assistant', text: reply },
+        { id: replyId, role: 'assistant', text: answer.reply, answer },
       ])
     } catch (failure) {
       setMessages((current) => current.filter((message) => message.id !== id))
@@ -96,6 +101,9 @@ function Chat() {
 
   return (
     <div className="chat-content">
+      <div className="problem-toolbar"><span>Electrical assistant · Estonia / EU</span>
+        <button className="problem-reset" disabled={pending} onClick={() => { problemContext.current = []; setMessages([]); setDraft(''); setError('') }}>New problem</button>
+      </div>
       {messages.length > 0 ? (
         <section
           className="message-list"
@@ -142,6 +150,7 @@ function Chat() {
                   </Markdown>
                 )}
               </div>
+              {message.answer && <AnswerDetails answer={message.answer} />}
             </article>
           ))}
           {pending && (
@@ -152,7 +161,7 @@ function Chat() {
         </section>
       ) : (
         <p className="chat-intro">
-          A question, a thought, a starting point. Give our AI a try.
+          Describe your equipment, supply and requirements. We’ll find relevant guidance and identify the information needed for selection.
         </p>
       )}
 
@@ -211,13 +220,20 @@ function Chat() {
         </p>
       )}
       <p className="chat-status" id="chat-status">
-        Each message starts fresh. Messages clear when you leave or refresh.
+        Follow-up details stay with this problem. Start a new problem for different equipment. Messages clear on refresh.
       </p>
     </div>
   )
 }
 
 function App() {
+  const [admin, setAdmin] = useState(window.location.hash === '#knowledge')
+  useEffect(() => {
+    const changed = () => setAdmin(window.location.hash === '#knowledge')
+    window.addEventListener('hashchange', changed)
+    return () => window.removeEventListener('hashchange', changed)
+  }, [])
+  if (admin) return <KnowledgeAdmin />
   return (
     <div className="site" id="home">
       <a className="skip-link" href="#main">
@@ -420,6 +436,7 @@ function App() {
           <span>E.R.R.O.</span>
         </a>
         <p>A project by Eric &amp; Robin.</p>
+        <a href="#knowledge">Knowledge management</a>
         <a href="#home">
           Back to top <Arrow diagonal />
         </a>

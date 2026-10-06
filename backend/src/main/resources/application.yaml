@@ -8,6 +8,13 @@ spring:
     hikari:
       maximum-pool-size: 5
       connection-timeout: 10000
+  jdbc:
+    template:
+      query-timeout: 5s
+  flyway:
+    default-schema: erro_knowledge
+    schemas: erro_knowledge
+    clean-disabled: true
   sql:
     init:
       mode: never
@@ -44,3 +51,16 @@ ai:
   reasoning-effort: ${AI_REASONING_EFFORT:none}
   max-output-tokens: ${AI_MAX_OUTPUT_TOKENS:2048}
   timeout: ${AI_TIMEOUT:60s}
+
+knowledge:
+  admin-token: ${KNOWLEDGE_ADMIN_TOKEN:}
+  keyword-top-k: ${RAG_KEYWORD_TOP_K:24}
+  vector-top-k: ${RAG_VECTOR_TOP_K:16}
+  final-chunks: ${RAG_FINAL_CHUNKS:6}
+  max-chunk-chars: ${RAG_MAX_CHUNK_CHARS:1600}
+  max-context-chars: ${RAG_MAX_CONTEXT_CHARS:12000}
+  min-relevance: ${RAG_MIN_RELEVANCE:0.15}
+  embedding-endpoint: ${EMBEDDING_ENDPOINT:}
+  embedding-api-key: ${EMBEDDING_API_KEY:}
+  embedding-model: ${EMBEDDING_MODEL:}
+  embedding-dimensions: ${EMBEDDING_DIMENSIONS:1536}

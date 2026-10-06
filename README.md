@@ -1,16 +1,15 @@
 # E.R.R.O.
 
-A project by Eric Rand and Robin Robert Antonis, with a React + TypeScript
-homepage in `web`: introduction, About us, Contact, and an expandable AI corner.
-Visitors can send a message to the Java/Maven Spring Boot backend in
-`backend/`, which calls the configured AI provider and returns a formatted reply.
-Each message is independent; nothing is saved and there are no separate
-conversations. PostgreSQL, Redis, and local MinIO are connected for future work.
+A project by Eric Rand and Robin Robert Antonis: an electrical equipment selection
+assistant for Estonia/EU, built on the existing React + TypeScript frontend and
+Java/Maven Spring Boot backend. Chat retrieves curated knowledge, performs
+applicable deterministic checks/calculations and returns sources and missing data.
+Follow-up details stay in page memory and clear on refresh or **New problem**.
+Knowledge and catalog data use PostgreSQL; chat content is not saved.
 
-Read [the project context](docs/project-context.md) for the background, possible
-future directions, and guidance for AI assistants. The direction is still open;
-electrical work, marketing, AI, and a future portfolio are possibilities.
-See [Homepage](docs/homepage.md) for the founder photos, draft copy, and contact.
+Read [Project context](docs/project-context.md) and [Electrical knowledge](docs/knowledge.md)
+for architecture, licensing, source management, product imports and verification.
+The provisional homepage and founder presentation remain in place.
 
 ## Run with Docker Compose
 
@@ -63,6 +62,18 @@ To stop and remove the containers while keeping local data:
 docker compose down
 ```
 
+## Knowledge management
+
+Set a random `KNOWLEDGE_ADMIN_TOKEN` (at least 32 characters) on the backend, then
+open `/#knowledge`. The token is never a frontend build variable. Import reviewed
+Markdown/text with metadata and indexing permission. Without a token the admin
+API is disabled. The migrations seed scope metadata and two open-license theory
+summaries; full standards and manufacturer documentation need authorized imports.
+
+Keyword retrieval works immediately. Optional `EMBEDDING_*` backend settings add
+semantic retrieval. See [the knowledge guide](docs/knowledge.md) before enabling
+embeddings, ingesting licensed content or deploying the migrations to Railway.
+
 ## Run locally
 
 For just the frontend, with Node.js 24 and npm installed:
@@ -84,3 +95,11 @@ From `web`:
 npm run lint
 npm run build
 ```
+
+For backend unit/API tests on Java 25, run `./mvnw verify` from `backend/`.
+For isolated PostgreSQL migration/retrieval tests, run
+`./scripts/verify-knowledge.sh` from the repository root. No real AI keys are used.
+
+End-to-end browser checks use `./scripts/verify-browser.sh` after
+`cd web && npm ci && npx playwright install chromium`. This creates an isolated
+local stack with a mock AI; see [verification details](docs/knowledge.md).

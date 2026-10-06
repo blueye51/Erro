@@ -83,3 +83,11 @@ but no email was sent. Railway deployment and a browser's configured email
 application remain environment-specific. Temporary browser test dependencies,
 scripts, and screenshots were kept outside the repository under
 `/tmp/erro-homepage-check/`; no frontend dependencies were added.
+
+## Electrical assistant integration — 2026-10-05
+
+The existing design is retained. Chat now shows optional source/calculation/
+assumption/warning/missing-data panels and keeps active problem details in page
+memory. New problem and refresh clear that context. The footer links to protected
+knowledge management at `/#knowledge`. See [Electrical knowledge](knowledge.md).
+The earlier single-message-only behavior described above is historical.

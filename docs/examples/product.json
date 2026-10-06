@@ -1,0 +1,16 @@
+{
+  "manufacturer": "REPLACE WITH REAL MANUFACTURER",
+  "partNumber": "REPLACE WITH EXACT PART NUMBER",
+  "name": "REPLACE WITH CATALOG NAME",
+  "productType": "CONTACTOR",
+  "sourceDocumentId": "REPLACE WITH INDEXED MANUFACTURER DOCUMENT UUID",
+  "ratedVoltageAc": null,
+  "ratedVoltageDc": null,
+  "ratedCurrent": null,
+  "coilVoltage": null,
+  "coilVoltageType": null,
+  "datasheetUrl": "",
+  "ratings": [],
+  "standards": [],
+  "additionalAttributes": {}
+}

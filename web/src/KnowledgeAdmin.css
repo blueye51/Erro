@@ -1,0 +1,25 @@
+.knowledge-admin { padding-block: 3rem; max-width: 1100px; overflow-wrap: anywhere; }
+.knowledge-admin h1 { font-size: clamp(2rem, 5vw, 3.5rem); margin-block: 1rem; }
+.knowledge-admin h2 { margin-bottom: 1rem; }
+.knowledge-admin section { margin-block: 2.5rem; padding-block: 1.5rem; border-top: 1px solid #d5dad3; }
+.knowledge-admin label { display: flex; flex-direction: column; gap: .4rem; margin-block: .8rem; font-weight: 500; }
+.knowledge-admin input, .knowledge-admin textarea, .knowledge-admin select { box-sizing: border-box; width: 100%; min-width: 0; padding: .65rem; border: 1px solid #899889; border-radius: .3rem; color: #172c26; background: #fff; font: inherit; }
+.knowledge-admin button, .problem-reset { cursor: pointer; padding: .55rem .85rem; border: 1px solid #527368; border-radius: .3rem; color: #19382c; background: #f8faf6; font: inherit; }
+.knowledge-admin button:disabled, .problem-reset:disabled { cursor: wait; opacity: .5; }
+.admin-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 1rem; }
+.admin-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.source-list { list-style: none; padding: 0; }
+.source-list > li { padding: 1rem 0; border-bottom: 1px solid #d5dad3; }
+.knowledge-admin pre { background: #edf1ea; padding: 1rem; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 36rem; overflow: auto; font-size: .85rem; }
+.knowledge-admin .admin-checkbox { flex-direction: row; align-items: flex-start; }
+.knowledge-admin .admin-checkbox input { width: auto; margin-top: .3rem; }
+.answer-detail { margin-block: .5rem; padding: .65rem; border: 1px solid #c8d3c8; border-radius: .4rem; }
+.answer-detail summary { cursor: pointer; font-weight: 600; }
+.answer-detail p { margin-block: .5rem; }
+.answer-detail ul, .answer-detail ol { padding-left: 1.3rem; }
+.answer-detail li { margin-block: .5rem; overflow-wrap: anywhere; }
+.answer-detail dl > div { display: flex; gap: 1rem; }
+.answer-detail dd { margin: 0; }
+.validation-failure { border-left: 3px solid #b13a30; padding-left: .7rem; }
+.problem-toolbar { display: flex; gap: 1rem; align-items: center; margin-bottom: .8rem; flex-wrap: wrap; }
+@media (max-width: 600px) { .admin-fields { grid-template-columns: minmax(0, 1fr); } }

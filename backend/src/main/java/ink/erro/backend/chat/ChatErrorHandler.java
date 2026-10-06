@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice(assignableTypes = ChatController.class)
 public class ChatErrorHandler {
-    @ExceptionHandler({MethodArgumentNotValidException.class, HttpMessageNotReadableException.class})
+    @ExceptionHandler({MethodArgumentNotValidException.class, HttpMessageNotReadableException.class, IllegalArgumentException.class})
     public ResponseEntity<Map<String, String>> invalidMessage() {
         return ResponseEntity.badRequest().cacheControl(CacheControl.noStore())
                 .body(Map.of("error", "Enter a message between 1 and 8,000 characters."));

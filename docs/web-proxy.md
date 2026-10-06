@@ -38,7 +38,7 @@ while the backend is unavailable, so visitors can still load the website.
 
 Both `/api` and `/api/*` are forwarded to the fixed `API_UPSTREAM`. Paths, query
 strings, methods, JSON bodies, and upstream status codes are preserved. API
-errors never fall through to `index.html`. Nginx uses a 128 KiB request body
+errors never fall through to `index.html`. Nginx uses a 256 KiB request body
 limit; the backend still validates the 8,000-character message limit.
 
 The upstream address is resolved at request time using the container's private
@@ -47,7 +47,7 @@ new backend addresses after replacement. A backend outage still produces an
 error until it is reachable again. Nginx does not retry requests or cache API
 replies, and proxy buffering is disabled.
 
-The proxy has a five-second connection timeout and a 70-second read timeout.
+The proxy has a five-second connection timeout and a 100-second read timeout.
 The AI provider read timeout defaults to 60 seconds; the browser waits 65 seconds.
 The wiki's shorter 15-second timeout is deliberately not reused for AI replies.
 Forwarding preserves the incoming Host (including its port) and Origin headers.
@@ -164,3 +164,8 @@ downtime. These tests do not verify an actual Railway deployment or a live AI ke
 Implementation references: [NGINX unprivileged image](https://github.com/nginx/docker-nginx-unprivileged),
 [proxy directives](https://nginx.org/en/docs/http/ngx_http_proxy_module.html),
 [DNS resolver](https://nginx.org/en/docs/http/ngx_http_core_module.html#resolver).
+
+The electrical knowledge integration increases the API body limit to 256 KiB for
+bounded text ingestion and the upstream read timeout to 100 seconds for retrieval
+plus generation. Admin bearer headers are forwarded by the existing proxy;
+`API_UPSTREAM` and Railway routing remain unchanged.

@@ -7,7 +7,45 @@ different names. MinIO stays local. Amazon S3 can be connected later.
 
 This guide records the required deployment configuration. No Railway resources
 have been created or inspected from this workspace. The dashboard labels below
-follow Railway's documentation checked on 2026-10-04.
+follow Railway's documentation checked on 2026-10-04; the existing-deployment
+rollout below was checked against the variable/deployment docs on 2026-10-06.
+
+## Update the existing deployment for electrical knowledge
+
+For the already-working `erro.ink` deployment, use this checklist. The numbered
+sections below describe the original infrastructure setup, not additional
+services needed for this release.
+
+1. Open **backend → Variables** and add `KNOWLEDGE_ADMIN_TOKEN`. Generate its
+   value locally with `openssl rand -hex 32`, and paste the resulting 64-character
+   secret into the variable. Keep this value private; it is also the token entered
+   in the knowledge admin screen. Do not put it in web variables or Git.
+2. Keep the working database, Redis and chat-provider variables. Confirm
+   `S3_ENABLED=false` and that `CHAT_ALLOWED_ORIGINS` includes
+   `https://erro.ink,https://www.erro.ink`. Leave `EMBEDDING_ENDPOINT`,
+   `EMBEDDING_MODEL` and `EMBEDDING_API_KEY` unset for the initial keyword-based
+   deployment. All `RAG_*` settings have defaults.
+3. Review and **Deploy** the staged variable change. Deploy the latest `main`
+   commit to both backend and web; if GitHub autodeploy did not run, use Railway's
+   command palette **Deploy Latest Commit** for each service. Check the commit
+   shown on each deployment. The web service needs no new variables.
+4. In backend logs, verify Flyway applied migrations through version `3` in
+   `erro_knowledge`, followed by `PostgreSQL connection verified`,
+   `Redis connection verified` and `Infrastructure ready`. Flyway runs at
+   application startup; the pre-deploy command stays empty. The database user
+   needs permission to create the dedicated schema. Keep the existing PostgreSQL
+   service/image: pgvector is optional and keyword retrieval works without it.
+5. Open <https://erro.ink/#knowledge>, enter the token, and confirm the 20 starter
+   source records appear. Test retrieval with `IEC 60947-2 breaking capacity`,
+   then test chat with a motor/protection question. Starter records mostly
+   describe source/standard scope; ingest permitted manufacturer guidance and
+   licensed material to supply detailed engineering evidence.
+
+Railway documents [applying variable changes](https://docs.railway.com/variables),
+[GitHub autodeploys](https://docs.railway.com/deployments/github-autodeploys) and
+[deploying the latest commit](https://docs.railway.com/deployments/deployment-actions).
+The admin token enables source management; chat retrieval itself can run without
+it. See [Electrical knowledge](knowledge.md) for optional embeddings and ingestion.
 
 ```mermaid
 flowchart LR
@@ -20,8 +58,8 @@ flowchart LR
 
 The browser calls `/api/chat` on `erro.ink`. Nginx forwards it to the backend's
 private address. Only web needs a public HTTPS domain. Database connections also
-use Railway's private network. Chat does not write to PostgreSQL or Redis; both
-are connected and checked for future work. See [Web proxy](web-proxy.md) for the
+use Railway's private network. Chat content is not saved. The knowledge/catalog subsystem writes to the dedicated
+`erro_knowledge` PostgreSQL schema; Redis remains connected for future work. See [Web proxy](web-proxy.md) for the
 implementation, matching the Nginx layout used in Eric's wiki.
 
 ## 1. Put the code on the deployment branch
@@ -76,7 +114,7 @@ and set these values:
 | Dockerfile Path, if selected manually | `Dockerfile`, relative to root directory `/backend`. |
 | Build Command override | Empty; the Dockerfile runs Maven `verify`. |
 | Start Command override | Empty; the Dockerfile starts the Java application. |
-| Pre-deploy Command | Empty; there are no migrations. |
+| Pre-deploy Command | Empty; Flyway runs the knowledge migrations at backend startup. |
 | Healthcheck Path | Empty; no GET health endpoint exists. |
 
 An automatic deployment triggered before configuration is complete may fail;
@@ -122,7 +160,7 @@ here is `/responses`, not `/chat/completions`. If you already entered OpenAI
 values, replace the endpoint, model, and key together. `AI_REASONING_EFFORT=none`
 disables thinking for this basic chat after the updated backend is deployed.
 Apply the variables and redeploy backend; no frontend change is needed when only
-the AI provider changes. See [DeepSeek setup](chat.md#deepseek-setup).
+the AI provider changes. See [Chat configuration](chat.md#configuration).
 
 The JDBC prefix is required by this Java application. Railway's generated
 `DATABASE_URL` is usually a `postgresql://` URL and must not be copied directly
@@ -223,7 +261,7 @@ First open `https://erro.ink/healthz` and confirm `ok`. Then open `https://erro.
 send a short message, and confirm a formatted reply. In browser developer tools,
 Network should show a POST to **`https://erro.ink/api/chat`**, returning 200 with
 a JSON `reply`. Refreshing should clear the page's messages. No chat tables,
-Redis keys, or saved conversations are created.
+Redis keys, or saved conversations are created; the knowledge/catalog tables are expected.
 
 To test through the same public web proxy:
 
@@ -299,3 +337,14 @@ retries, Markdown, mobile layout, and clearing messages on refresh. Backend
 startup checks again verified PostgreSQL, Redis, and local MinIO. See
 [Web proxy verification](web-proxy.md#results--2026-10-04) for results and limits.
 The actual Railway migration still needs the dashboard steps above.
+
+## Electrical knowledge rollout — 2026-10-05
+
+The user confirms the application and PostgreSQL are already deployed. Extend
+those services; do not create replacements. Review [Electrical knowledge](knowledge.md)
+for Flyway schema permissions, all `KNOWLEDGE_ADMIN_TOKEN`, `RAG_*`, `EMBEDDING_*`
+variables, licensed ingestion and the post-deployment verification sequence.
+The existing database URL/user/password references, private network and
+`S3_ENABLED=false` remain appropriate. Start with lexical retrieval and a backend
+admin token; embedding credentials are optional and separate from chat credentials.
+The implementation has not deployed or changed Railway resources from this workspace.

@@ -372,7 +372,7 @@ h2 em {
   background: #f0f2e9;
   overflow: hidden;
 }
-.chat-panel summary {
+.chat-panel > summary {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -381,10 +381,10 @@ h2 em {
   list-style: none;
   cursor: pointer;
 }
-.chat-panel summary::-webkit-details-marker {
+.chat-panel > summary::-webkit-details-marker {
   display: none;
 }
-.chat-panel summary:focus-visible {
+.chat-panel > summary:focus-visible {
   outline-offset: -5px;
 }
 .chat-summary-title {
@@ -808,7 +808,7 @@ h2 em {
   .explore-copy > p:last-child {
     max-width: 440px;
   }
-  .chat-panel summary {
+  .chat-panel > summary {
     padding: 24px 20px;
   }
   .chat-content {

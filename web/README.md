@@ -35,3 +35,15 @@ Compose sets `BACKEND_PROXY_TARGET=http://backend:8080` for `web-dev`.
 See [Web proxy](../docs/web-proxy.md) for settings, request routing, and tests,
 and [Railway setup](../docs/railway.md) for the deployment migration. API keys
 must never use a `VITE_` prefix or enter `web/`.
+
+## Electrical knowledge UI tests
+
+The existing chat now renders source, calculation, assumption, warning and missing
+information details. Knowledge management is at `/#knowledge`; the operator token
+stays in page memory. See [the knowledge guide](../docs/knowledge.md).
+
+After `npm ci` and `npx playwright install chromium`, run
+`../scripts/verify-browser.sh` from `web/` (or `./scripts/verify-browser.sh` from
+the repository root). The runner creates an isolated real web/backend/database
+stack with a mock AI and cleans up its own resources. The underlying
+`npm run test:browser` expects its local fixture URL/token. No real AI keys are used.

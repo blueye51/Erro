@@ -1,0 +1,14 @@
+{
+  "title": "Owner engineering note: motor selection inputs",
+  "description": "Original checklist; not a standard or manufacturer specification.",
+  "sourceType": "INFORMATIONAL",
+  "publisher": "Application owner",
+  "sourceUrl": "",
+  "jurisdiction": "ESTONIA",
+  "language": "en",
+  "documentVersion": "1",
+  "copyrightStatus": "USER_PROVIDED",
+  "licenseNotes": "Original owner-supplied text. Confirm indexing and AI-provider processing permission before importing.",
+  "rightsConfirmed": true,
+  "content": "# Motor protection inputs\n## Nameplate\nObtain motor nameplate current, supply voltage, phase count, duty, power factor and efficiency where a calculation is needed.\n\n## Protection system\nIdentify starting method, inrush, overload and short-circuit protection, cable conditions and prospective fault current. Use actual manufacturer coordination tables for a documented device combination. This checklist is not a specification or compliance determination."
+}

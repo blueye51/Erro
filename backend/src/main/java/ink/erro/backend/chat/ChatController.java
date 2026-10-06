@@ -1,6 +1,6 @@
 package ink.erro.backend.chat;
 
-import ink.erro.backend.ai.AiService;
+import java.util.List;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -13,19 +13,21 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 public class ChatController {
-    private final AiService aiService;
+    private final ChatService chatService;
 
-    public ChatController(AiService aiService) {
-        this.aiService = aiService;
+    public ChatController(ChatService chatService) {
+        this.chatService = chatService;
     }
 
     @PostMapping(value = "/api/chat", consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<ChatReply> chat(@Valid @RequestBody ChatMessage request) {
+    public ResponseEntity<ChatService.ChatReply> chat(@Valid @RequestBody ChatMessage request) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
-                .body(new ChatReply(aiService.reply(request.message().strip())));
+                .body(chatService.reply(request.message(), request.problemContext()));
     }
 
-    public record ChatMessage(@NotBlank @Size(max = 8000) String message) {}
-    public record ChatReply(String reply) {}
+    public record ChatMessage(@NotBlank @Size(max = 8000) String message,
+                              @Size(max = 8) List<@NotBlank @Size(max = 8000) String> problemContext) {
+        public ChatMessage(String message) { this(message, List.of()); }
+    }
 }

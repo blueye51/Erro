@@ -6,7 +6,10 @@ E.R.R.O., which ideas are tentative, and the limits of the current website.
 [Infrastructure](infrastructure.md) covers the Java backend, Docker Compose,
 PostgreSQL, Redis, local MinIO, and the planned switch to Amazon S3.
 
-[Chat](chat.md) covers the stateless AI flow, API contract, DeepSeek configuration,
+[Electrical knowledge](knowledge.md) covers retrieval, migrations, source licensing,
+admin ingestion/debugging, calculations, catalog validation and Railway rollout.
+
+[Chat](chat.md) covers the AI request flow, API contract, DeepSeek configuration,
 frontend behavior, deployment settings, and verification.
 
 [Homepage](homepage.md) covers the introduction, founder photos and draft bios,
