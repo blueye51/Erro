@@ -24,6 +24,24 @@ current draft and conversation; browser refresh still clears them. Starter promp
 fill an editable draft and do not call the API until sent. See [Homepage](homepage.md).
 A previous frontend can still read `reply` during a rolling deployment.
 
+## Reply formatting
+
+Assistant replies use `react-markdown` with `remark-gfm` for GitHub-flavored
+Markdown, including pipe tables. Tables render as semantic HTML with column
+headers, visible cell borders and alternating row backgrounds. Each table has a
+keyboard-focusable horizontal scroll region on narrow screens; wide content does
+not force the entire page to scroll sideways. Links, emphasis and inline code
+inside cells retain their formatting. Code blocks remain literal text.
+
+Raw HTML is still skipped, Markdown images render as their alt text, and the
+renderer retains its default URL sanitization. Table support does not require
+raw HTML parsing or change the backend response. See the
+[upstream plugin documentation](https://github.com/remarkjs/remark-gfm) for syntax.
+Run `npm ci` in `web/` after updating dependencies, then build/redeploy the web
+service. There are no new environment variables or migrations for this change.
+
+## Error handling
+
 Errors retain `{ "error": "safe message" }`: 400 for invalid input, 503 for
 missing/invalid provider configuration or rate limiting, 502 for provider failures
 or invalid replies, and 504 for provider timeout. Provider bodies and credentials

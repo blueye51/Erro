@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Markdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { sendMessage, type ChatReply } from './chat'
 import { AnswerDetails } from './AnswerDetails'
 import { Arrow } from './Brand'
@@ -97,8 +98,19 @@ export function Chat({ active }: { active: boolean }) {
                 ) : (
                   <Markdown
                     skipHtml
+                    remarkPlugins={[remarkGfm]}
                     components={{
                       img: ({ alt }) => <span>{alt}</span>,
+                      table: ({ children }) => (
+                        <div
+                          className="message-table"
+                          role="region"
+                          aria-label="Table in assistant reply"
+                          tabIndex={0}
+                        >
+                          <table>{children}</table>
+                        </div>
+                      ),
                       pre: ({ children }) => (
                         <pre tabIndex={0} aria-label="Code block">
                           {children}

@@ -44,6 +44,9 @@ The existing chat now renders source, calculation, assumption, warning and missi
 information details. Knowledge management is at `/#knowledge`; the operator token
 stays in page memory. See [the knowledge guide](../docs/knowledge.md).
 
+Replies also render Markdown tables using `remark-gfm`, with horizontally
+scrollable cells on narrow screens. See [reply formatting](../docs/chat.md#reply-formatting).
+
 After `npm ci` and `npx playwright install chromium`, run
 `../scripts/verify-browser.sh` from `web/` (or `./scripts/verify-browser.sh` from
 the repository root). The runner creates an isolated real web/backend/database

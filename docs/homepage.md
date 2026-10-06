@@ -93,3 +93,24 @@ database schema, domain and Railway variables need no changes for this UI update
   or local/session storage entries occurred.
 
 No live AI provider or Railway deployment is exercised by the local fixture.
+
+## Table rendering — 2026-10-06
+
+Chat now uses `remark-gfm` to render Markdown tables as actual rows, column headers
+and cells. Table contents are preserved, with cell borders, alternating backgrounds
+and horizontal scrolling by touch or keyboard on smaller screens. This fixes the
+raw pipe/separator text previously visible in replies. See
+[Reply formatting](chat.md#reply-formatting) for parser and security behavior.
+
+The browser fixture includes a table reply with long prose, bold text, a link and
+an escaped pipe inside inline code. It checks the table structure, code/list
+formatting, raw HTML and unsafe-link handling, page overflow and keyboard scrolling
+at desktop/mobile sizes, and refresh clearing. It uses generated fixture content
+rather than saving a customer's installation details.
+
+`npm run build`, `npm run lint`, the production web image build and the isolated
+browser suite passed. Table rendering was checked at 1440, 768, 390 and 320px;
+desktop/mobile screenshots were inspected. Header/cell structure, escaped pipes,
+inline formatting, preserved code blocks, keyboard horizontal scrolling and
+HTML/URL safety checks all passed. Railway deployment remains outside this local
+verification.
