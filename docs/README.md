@@ -12,8 +12,8 @@ admin ingestion/debugging, calculations, catalog validation and Railway rollout.
 [Chat](chat.md) covers the AI request flow, API contract, DeepSeek configuration,
 frontend behavior, deployment settings, and verification.
 
-[Homepage](homepage.md) covers the introduction, founder photos and draft bios,
-top navigation, email contact, expandable AI corner, and frontend verification.
+[Homepage](homepage.md) covers the main chat workspace, starter prompts,
+About us/Contact us navigation, founder photos, email contact and verification.
 
 [Web proxy](web-proxy.md) covers the Nginx image, private API forwarding, runtime
 variables, local production/development modes, and proxy regression tests.

@@ -1,9 +1,11 @@
 # E.R.R.O. web
 
-React + TypeScript on Vite. This is a minimal AI chat for Eric and Robin's shared
-project. Messages go to `POST /api/chat` and replies render as Markdown. The page
-keeps its messages in memory only; refresh clears them, and each request sends
-only the current message.
+React + TypeScript on Vite. The homepage opens directly into the electrical
+assistant, with About us and Contact us available through hash navigation.
+Messages go to `POST /api/chat` and replies render as Markdown with expandable
+engineering details. Messages, drafts and bounded prior user inputs stay in page
+memory across navigation; refresh or New problem clears them. See
+[Homepage](../docs/homepage.md) for components and behavior.
 
 Read [project context](../docs/project-context.md) before adding features.
 See [Chat](../docs/chat.md) for backend setup and the complete API contract.

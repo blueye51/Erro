@@ -8,8 +8,8 @@ E.R.R.O. is a shared project by **Eric Rand and Robin Robert Antonis**. Eric is 
 and the person working with the AI assistant. Robin is Eric's friend. The name
 comes from their names; no expanded phrase or other acronym has been agreed.
 
-They want a starting point for making a project together. They do not yet have
-a fixed business plan, product specification, or final direction.
+They started with a shared project and have since confirmed the electrical
+assistant direction below. Business and purchasing details remain in development.
 
 ## Confirmed product direction — 2026-10-05
 
@@ -22,10 +22,21 @@ not establish business credentials, customers, guaranteed compliance or a finish
 purchasing service.
 
 The existing Spring Boot/React architecture and deployed Railway application are
-to be extended, not rebuilt. The frontend remains provisional, but this task
-explicitly preserves its visual design and adds answer details and protected
-knowledge management. Removing/replacing the frontend remains a separate future
-task, not part of the knowledge implementation.
+to be extended, not rebuilt. The frontend remains provisional and retains the
+cream/green branding, answer details and protected knowledge management.
+
+## Chat as the main website experience — 2026-10-06
+
+Eric requested that visitors land directly in the chat, with About us and Contact
+us accessible through navigation. The chat is now the main workspace, with
+editable starter prompts for motor protection, component comparisons and parts
+planning. About/contact are separate hash views. Navigating between them keeps
+the conversation and draft in page memory; refresh and New problem clear it.
+
+Eric intends to connect product information, quantities, shipping and prices so
+the assistant can help plan customer projects. This is the planned next stage,
+not a live stock, pricing, quotation, delivery or purchasing integration. This
+frontend change adds no commerce endpoints and makes no availability promises.
 
 ## Current application
 
@@ -38,9 +49,9 @@ task, not part of the knowledge implementation.
   No assistant-generated ratings are reused as user input. New problem and refresh
   clear context; obvious topic changes also reset it. There is no saved chat,
   conversation database, visitor account system or browser storage.
-- The existing homepage retains Eric/Robin's supplied photos and draft bios,
-  Home/About us/Contact navigation, supplied contact address and expandable chat.
-  See [Homepage](homepage.md) for its presentation history.
+- The homepage opens the electrical chat immediately. Chat/About us/Contact us
+  navigation exposes the supplied founder photos, draft bios and contact email
+  in separate views. See [Homepage](homepage.md) for behavior and verification.
 - The knowledge admin UI is at `/#knowledge`. A backend-only operator token gates
   every `/api/admin` endpoint. No existing authentication system was present.
 - Sources, chunks and product/catalog relationships persist in PostgreSQL under

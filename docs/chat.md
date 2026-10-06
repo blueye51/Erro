@@ -19,6 +19,9 @@ Successful responses contain `reply`, `requestId`, `sources`, `calculations`,
 `assumptions`, `warnings`, `missingInformation`, `validations`, `products` and
 `contextReset`. Source IDs are mapped from actual retrieved chunks. The frontend
 renders Markdown safely and places engineering details in expandable sections.
+It opens directly on the homepage. About us/Contact us navigation preserves the
+current draft and conversation; browser refresh still clears them. Starter prompts
+fill an editable draft and do not call the API until sent. See [Homepage](homepage.md).
 A previous frontend can still read `reply` during a rolling deployment.
 
 Errors retain `{ "error": "safe message" }`: 400 for invalid input, 503 for

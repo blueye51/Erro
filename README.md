@@ -9,7 +9,8 @@ Knowledge and catalog data use PostgreSQL; chat content is not saved.
 
 Read [Project context](docs/project-context.md) and [Electrical knowledge](docs/knowledge.md)
 for architecture, licensing, source management, product imports and verification.
-The provisional homepage and founder presentation remain in place.
+The homepage opens directly into chat; About us and Contact us are available
+from the top navigation. See [Homepage](docs/homepage.md) for frontend behavior.
 
 ## Run with Docker Compose
 
