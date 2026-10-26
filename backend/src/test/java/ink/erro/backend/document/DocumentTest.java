@@ -68,13 +68,67 @@ class DocumentTest {
             var result=extractor.extract("kilbiskeem.pdf",bytes,s->{});
             assertThat(result.evidence()).anyMatch(e->e.method().equals("VISION"));
             assertThat(result.warnings()).anyMatch(w->w.contains("unverified"));
+            assertThat(result.warnings()).noneMatch(w->w.startsWith("PDF text"));
             assertThat(result.evidence().stream().flatMap(e->e.items().stream())).allMatch(i->i.basis().equals("VISION_SYMBOL_COUNT"));
         }
         verify(ai,atLeast(2)).analyzeImage(eq("deepseek-flash"),contains("untrusted DATA"),anyString(),any());
     }
+    @Test void pdfVisionCropsPreserveWhiteBackgroundAndMatchRotatedCroppedPages() throws Exception {
+        var references = new ArrayList<BufferedImage>();
+        try (var pdf = new PDDocument(); var bytes = new ByteArrayOutputStream()) {
+            for (int rotation : List.of(0, 90, 180, 270)) {
+                var page = new PDPage(new PDRectangle(640, 720));
+                page.setCropBox(new PDRectangle(17, 23, 540, 600));
+                page.setRotation(rotation);
+                pdf.addPage(page);
+                try (var stream = new PDPageContentStream(pdf, page)) {
+                    // Black vector symbols across every crop, without an explicit PDF background.
+                    for (int y = 55; y < 620; y += 70) for (int x = 45; x < 550; x += 80) {
+                        stream.addRect(x, y, 15, 22); stream.stroke();
+                    }
+                    stream.moveTo(80, 120); stream.lineTo(400, 500); stream.stroke();
+                }
+            }
+            pdf.save(bytes);
+            var renderer = new org.apache.pdfbox.rendering.PDFRenderer(pdf);
+            for (int page = 0; page < pdf.getNumberOfPages(); page++)
+                references.add(renderer.renderImageWithDPI(page, 200, org.apache.pdfbox.rendering.ImageType.RGB));
+            var json = tools.jackson.databind.json.JsonMapper.builder().build();
+            var inspected = new ArrayList<String>();
+            when(ai.analyzeImage(anyString(), anyString(), anyString(), any())).thenAnswer(call -> {
+                String input = call.getArgument(2);
+                var prompt = json.readTree(input.substring(input.indexOf('{')));
+                String location = prompt.path("location").asText();
+                var reference = references.get(Integer.parseInt(location.substring("Page ".length())) - 1);
+                var crop = prompt.path("crop");
+                int offsetX = crop.get(0).asInt(), offsetY = crop.get(1).asInt();
+                var image = ImageIO.read(new ByteArrayInputStream((byte[]) call.getArgument(3)));
+                try {
+                    assertThat(image.getWidth()).isEqualTo(crop.get(2).asInt());
+                    assertThat(image.getHeight()).isEqualTo(crop.get(3).asInt());
+                    int white = 0, ink = 0;
+                    for (int y = 0; y < image.getHeight(); y++) for (int x = 0; x < image.getWidth(); x++) {
+                        int expected = offsetX + x < reference.getWidth() && offsetY + y < reference.getHeight()
+                                ? reference.getRGB(offsetX + x, offsetY + y) : Color.WHITE.getRGB();
+                        int actual = image.getRGB(x, y);
+                        if (actual == Color.WHITE.getRGB()) white++; else ink++;
+                        if (actual != expected) throw new AssertionError(location + " crop " + offsetX + "," + offsetY
+                                + " differs from the reference at " + x + "," + y);
+                    }
+                    assertThat(white).isGreaterThan(image.getWidth() * image.getHeight() / 2);
+                    assertThat(ink).isPositive();
+                    inspected.add(location + ":" + offsetX + "," + offsetY);
+                } finally { image.flush(); }
+                return VISION;
+            });
+            extractor.extract("vector-panel.pdf", bytes.toByteArray(), status -> {});
+            assertThat(inspected).hasSize(16).doesNotHaveDuplicates();
+        } finally { references.forEach(BufferedImage::flush); }
+    }
     @Test void mixedPdfPreservesTextAndVisualEvidence() throws Exception {
         var result=extractor.extract("mixed.pdf",pdf(true,false,true),s->{});
         assertThat(result.evidence()).anyMatch(e->e.method().equals("PDF_TEXT")).anyMatch(e->e.method().equals("VISION"));
+        assertThat(result.warnings()).anyMatch(w->w.startsWith("PDF text"));
     }
     @Test void imageDecodingAndCropOwnershipPreventOverlapCounts() throws Exception {
         when(ai.analyzeImage(anyString(),anyString(),anyString(),any())).thenReturn(

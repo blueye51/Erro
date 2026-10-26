@@ -57,6 +57,10 @@ outside this application's control; `store: false` is not a retention guarantee.
   only the tile owning the center retains that item. Coordinates are checked and
   out-of-core items discarded. Source regions retain page coordinates in rendered
   pixels. Border localization and visual recognition remain fallible.
+  Tile graphics explicitly use a white background: PDFBox clears the page using
+  that background independently of the drawing color. Filling a tile white
+  alone does not prevent black-on-black output. See the
+  [PDFBox renderer](https://github.com/apache/pdfbox/blob/3.0.8/pdfbox/src/main/java/org/apache/pdfbox/rendering/PDFRenderer.java#L446).
 - POI 5.5.1 reads Word paragraphs/tables and Excel sheets/rows, preserving labels,
   units and quantities. Legacy DOC yields less structured text. Word pagination
   is unavailable; locations use paragraphs/tables. Embedded Word drawings need a
@@ -73,6 +77,10 @@ extraction records printed OCR quantities, inferred symbol counts, estimates and
 unknowns separately. A breaker label such as C16 is not a quantity. Malformed,
 truncated or unlocated model output fails the file rather than publishing it as a
 complete takeoff. A failed file publishes no partial extraction.
+
+The visual-extraction warning is an uncertainty notice and can appear after
+successful processing. The PDF text/table-layout notice appears only when PDF
+text was extracted; an entirely visual PDF should not show that text notice.
 
 ## Retrieval, electrical checks and counting
 
@@ -294,3 +302,29 @@ Final local verification on 2026-10-26:
   unavailable Docker engine/WSL integration. Compose startup connection checks
   therefore remain unverified for this change. No live provider call or Railway
   deployment was verified.
+
+### Visual-only PDF rendering fix — 2026-10-26
+
+An owner-supplied three-page `Peakilp.pdf` reproduced a rendering defect before
+any provider call: all 12 generated crops were black or almost entirely black,
+although ordinary PDF rendering showed the drawing. The tile painter now sets
+the graphics background to white before invoking PDFBox. Local checks on that
+same document verified all 12 outgoing crops against independent full-page
+200-DPI renders with zero pixel differences, including white edge padding.
+The document and its rendered images are not committed or indexed as knowledge.
+This verifies rendering, not the model's recognition or DIN-module accuracy.
+
+A regression test first failed against the old renderer, then passed with the
+fix. It compares the actual PNG bytes supplied to the vision client against
+reference renders across 16 crops, all four page rotations and a nonzero crop-box
+origin. Visual-only PDFs omit the text-layout warning; mixed PDFs retain it.
+Maven `verify` passed: 81 tests, zero failures/errors, 7 opt-in database tests
+skipped (74 executed). The packaged-worker smoke test passed with its local
+mock provider. Compose configuration validation passed through the Windows CLI.
+The backend image build and knowledge integration script were
+attempted but remain blocked by the unavailable Docker engine/WSL integration;
+Compose startup connection checks and live DeepSeek recognition remain unverified.
+
+Deploy the updated backend; this fix requires no frontend or configuration
+change. Start **New problem** and reattach affected PDFs so questions use fresh
+extraction instead of any existing blank-image evidence.

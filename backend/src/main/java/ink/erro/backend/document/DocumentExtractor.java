@@ -125,6 +125,8 @@ public class DocumentExtractor implements DocumentProcessor {
                         var image = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
                         var graphics = image.createGraphics();
                         try {
+                            // PDFRenderer clears the page using the Graphics2D background, independently of fill color.
+                            graphics.setBackground(Color.WHITE);
                             graphics.setColor(Color.WHITE); graphics.fillRect(0, 0, w, h);
                             graphics.translate(-x, -y); renderer.renderPageToGraphics(pageIndex, graphics, scale, scale);
                         } finally { graphics.dispose(); }
@@ -132,7 +134,8 @@ public class DocumentExtractor implements DocumentProcessor {
                     }, budget, progress));
                 }
             }
-            out.warnings.add("PDF text preserves reading order and spacing; verify ambiguous table columns against the original page.");
+            if (out.evidence.stream().anyMatch(e -> e.method().equals("PDF_TEXT")))
+                out.warnings.add("PDF text preserves reading order and spacing; verify ambiguous table columns against the original page.");
         }
     }
     private void raster(String filename, String ext, byte[] bytes, Collector out, int[] budget, Consumer<String> progress) throws IOException {
