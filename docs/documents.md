@@ -393,5 +393,15 @@ The packaged worker check passed on the owner's three-page PDF with invalid
 coordinates on all 12 crops: 12 mock requests completed with readable incomplete
 evidence and no fabricated quantities.
 
+Live verification after Railway reported the backend deployment of `6e4be2f`
+successful: the same owner-supplied PDF was uploaded through `https://erro.ink`
+into a fresh temporary workspace. All three pages finished processing; the file
+reached READY with 40 excerpts and three extraction warnings. A follow-up chat
+request returned HTTP 200 and a readable answer with 12 mapped document sources.
+The answer identified partial retrieval and missing specifications for a reliable
+DIN total. The temporary workspace was deleted successfully after the test.
+This verifies the real upload/processing/answer path with the configured provider;
+it does not establish takeoff accuracy or verify every recognized label/rating.
+
 Deploy only the updated backend, then remove/re-upload the failed attachment or
 start **New problem**. No new configuration or frontend change is required.
