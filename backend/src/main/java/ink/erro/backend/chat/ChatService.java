@@ -37,7 +37,8 @@ public class ChatService {
         if(!failures.isEmpty()) {
             answer="The stated combination is unsuitable under the stated conditions.\n\n"+String.join("\n\n",failures.stream().map(ElectricalValidationService.Check::explanation).toList());
         } else {
-            try { answer=ai.reply(json.writeValueAsString(Map.of("userQuestion",problem.question(),"referenceData",context))); }
+            try { answer=ai.reply(json.writeValueAsString(Map.of("userQuestion",message.strip(),
+                    "previousUserMessages",problem.previousMessages(),"referenceData",context))); }
             catch(AiException failure) {
                 LoggerFactory.getLogger(getClass()).warn("chat request={} providerErrorStatus={}",id,failure.status().value());
                 throw failure;

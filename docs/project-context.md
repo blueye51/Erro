@@ -1,6 +1,6 @@
 # E.R.R.O. project context
 
-Last updated: 2026-10-06
+Last updated: 2026-10-26
 
 ## People and name
 
@@ -49,9 +49,19 @@ frontend change adds no commerce endpoints and makes no availability promises.
   No assistant-generated ratings are reused as user input. New problem and refresh
   clear context; obvious topic changes also reset it. There is no saved chat,
   conversation database, visitor account system or browser storage.
+- On 2026-10-26 Eric requested short-term memory for the current chat. The model
+  now receives the latest question separately from chronological prior user
+  messages, with an explicit instruction to use those messages for follow-ups.
+  Long follow-ups and questions about related components no longer reset memory
+  solely due to length or a clearly linked component change. The UI shows the
+  remembered message count and announces backend-triggered resets. This does
+  not add stored chat history or include generated replies as technical input.
 - The homepage opens the electrical chat immediately. Chat/About us/Contact us
-  navigation exposes the supplied founder photos, draft bios and contact email
-  in separate views. See [Homepage](homepage.md) for behavior and verification.
+  navigation exposes founder names, draft bios and contact email in separate
+  views. Eric requested permanent removal of both founder portraits on 2026-10-26:
+  About us uses text only, with no profile pictures or image placeholders. The
+  portrait assets are removed from the frontend. See [Homepage](homepage.md)
+  for behavior and verification.
 - The knowledge admin UI is at `/#knowledge`. A backend-only operator token gates
   every `/api/admin` endpoint. No existing authentication system was present.
 - Sources, chunks and product/catalog relationships persist in PostgreSQL under

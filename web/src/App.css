@@ -349,47 +349,15 @@ h1 em { color: var(--green); font-weight: 400; }
   grid-template-columns: 1fr 1fr;
   gap: 32px;
 }
-.founder-photo {
-  position: relative;
-  height: 440px;
-  overflow: hidden;
-  border-radius: 7px;
-  background: #e3e8dd;
-}
-.founder-photo::after {
-  position: absolute;
-  inset: 50% 0 0;
-  content: '';
-  background: linear-gradient(transparent, #1421199c);
-}
-.founder-photo img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.founder-photo-0 img {
-  object-position: 50% 44%;
-}
-.founder-photo-1 img {
-  object-position: 50% 33%;
-}
-.photo-caption {
-  position: absolute;
-  z-index: 1;
-  bottom: 24px;
-  left: 26px;
-  color: #fff;
-  font-family: Georgia, serif;
-  font-size: 23px;
-  font-style: italic;
+.founder-card {
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
 }
 .founder-title {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  margin-top: 25px;
 }
 .founder-title h3 {
   font-size: 23px;
@@ -481,7 +449,6 @@ h1 em { color: var(--green); font-weight: 400; }
 @media (max-width: 1000px) {
   .page-width, .header-inner { width: calc(100% - 64px); }
   .section-heading, .contact-inner { gap: 32px; }
-  .founder-photo { height: 380px; }
   .founder-title h3 { font-size: 21px; }
 }
 @media (max-width: 700px) {
@@ -508,7 +475,6 @@ h1 em { color: var(--green); font-weight: 400; }
   .section-heading { grid-template-columns: 1fr; gap: 22px; margin-bottom: 30px; }
   .section-heading h1 { font-size: 39px; }
   .founder-grid { grid-template-columns: 1fr; gap: 37px; }
-  .founder-photo { height: auto; aspect-ratio: 1 / 1.05; }
   .founder-title h3 { font-size: 23px; }
   .about-note { margin-top: 34px; }
   .contact-section { padding-block: 54px; min-height: calc(100svh - 149px); }

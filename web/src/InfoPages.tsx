@@ -3,17 +3,13 @@ import { Arrow } from './Brand'
 const founders = [
   {
     name: 'Eric Rand',
-    photo: '/photos/eric.png',
     description:
       'Big on curiosity. Bigger on ambition. Eric believes the best way to find out if an idea works is to roll up your sleeves and start building.',
-    caption: 'Ideas into action.',
   },
   {
     name: 'Robin Robert Antonis',
-    photo: '/photos/robin.png',
     description:
       'A fresh perspective and a head full of possibilities. Robin is all about asking “what if?” and seeing just how far a small beginning can go.',
-    caption: 'Always looking ahead.',
   },
 ]
 
@@ -42,17 +38,6 @@ export function AboutUs() {
           <div className="founder-grid">
             {founders.map((founder, index) => (
               <article className="founder-card" key={founder.name}>
-                <div className={`founder-photo founder-photo-${index}`}>
-                  <img
-                    src={founder.photo}
-                    alt={`Photo chosen for ${founder.name}`}
-                    width={index === 0 ? 934 : 800}
-                    height={index === 0 ? 1127 : 1200}
-                    loading="lazy"
-                    decoding="async"
-                  />
-                  <span className="photo-caption">{founder.caption}</span>
-                </div>
                 <div className="founder-title">
                   <h3>{founder.name}</h3>
                   <span>0{index + 1}</span>

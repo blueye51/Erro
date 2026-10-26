@@ -26,9 +26,17 @@ new query pattern before treating extracted values as dependable.
 The browser retains previous user inputs only for the active problem. There are
 no accounts, saved chats, chat database rows, or browser storage. **New problem**
 clears context and messages. Obvious equipment/topic changes reset inherited
-parameters; long self-contained questions also reset. Ambiguous overlapping
-changes need the user's explicit reset. Previous AI replies are never used as
+parameters; clearly linked component follow-ups retain them. Message length
+alone does not reset memory. Ambiguous overlapping changes need the user's
+explicit reset. Previous AI replies are never used as
 technical input. Refreshing clears everything, including the administrator token.
+
+Generation receives the latest `userQuestion` separately from chronological
+`previousUserMessages` accepted by `ProblemContextService`. This makes follow-up
+context explicit while retrieval and deterministic checks still use the combined
+problem. The admin debugger exposes the same envelope. The chat UI shows how
+many prior user messages it remembers and announces automatic context resets.
+See [Chat memory](chat.md#short-term-chat-memory) for limits and frontend checks.
 
 ## Database and migration safety
 

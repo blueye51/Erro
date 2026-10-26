@@ -24,6 +24,42 @@ current draft and conversation; browser refresh still clears them. Starter promp
 fill an editable draft and do not call the API until sent. See [Homepage](homepage.md).
 A previous frontend can still read `reply` during a rolling deployment.
 
+## Short-term chat memory
+
+The current chat remembers up to **eight successful user messages**, within a
+**24,000-character** total. Each follow-up includes those messages in chronological
+order through the existing `problemContext` field. The oldest messages are dropped
+when either limit is reached. Failed or pending sends are not added to memory,
+so retrying does not duplicate them. Navigation to About us or Contact us preserves
+memory in the current page; New problem, a full refresh, or closing the page clears
+it. There is no timer, cross-tab memory, saved history or browser/server storage.
+
+The UI displays the number of remembered user messages and a notice when the
+backend resets context. The backend still resets for explicit new-problem
+requests and clearly separate equipment questions. A follow-up longer than 500
+characters no longer causes a reset on its own. Explicit continuations such as
+“What enclosure would work for it?” retain the current problem. Topic detection
+remains a limited heuristic; use New problem when changing equipment/conditions.
+
+For generation, the provider's JSON input separates `userQuestion` (the latest
+message) from `previousUserMessages` (accepted earlier user inputs). The system
+instruction explicitly uses those inputs to understand follow-ups and avoid
+repeating questions already answered. Retrieval/calculations still use the
+combined active problem. The protected retrieval debugger shows the same input
+shape. Earlier assistant replies are not sent back as user evidence or assumed
+to be verified specifications; questions requiring an unavailable earlier answer
+may need the visitor to restate the relevant detail. The provider still receives
+`store: false` and no conversation/previous-response IDs.
+
+Rebuild and deploy **both web and backend** to use the updated memory behavior
+and system instruction. There are no new credentials, variables or migrations.
+
+After `npm run build` from `web/`, run `npm run test:chat-memory` there. This
+starts a temporary local production preview and uses intercepted API fixtures,
+without backend services or real provider credentials. Install Chromium once
+with `npx playwright install chromium`. Backend `./mvnw verify` tests the actual
+provider envelope against a local mock HTTP server.
+
 ## Reply formatting
 
 Assistant replies use `react-markdown` with `remark-gfm` for GitHub-flavored
@@ -77,6 +113,27 @@ Run `./mvnw verify` from `backend/` on Java 25. Tests use a local HTTP mock prov
 and no real keys. Run `./scripts/verify-knowledge.sh` at the repository root for
 isolated PostgreSQL retrieval/migration tests. See [Electrical knowledge](knowledge.md)
 for this implementation's complete verification and deployment checklist.
+
+## Chat memory verification — 2026-10-26
+
+- Frontend build and lint passed. `npm run test:chat-memory` passed against the
+  production frontend with mock API responses: remembered follow-ups, navigation,
+  eight-message/24,000-character bounds, duplicate-send prevention, error/retry,
+  explicit and backend-requested resets, refresh clearing, Markdown, and desktop/
+  mobile layouts at 1440, 768, 390 and 320px. No browser storage or cookies were
+  created. A mobile screenshot was inspected.
+- Maven `verify` passed using a temporary Temurin JDK 25: **53 tests passed**,
+  **7 PostgreSQL integration tests skipped** because no test database was supplied.
+  Added regressions verify long/related follow-ups, reset isolation, latest-message
+  vs chronological-user-memory provider input, no server/provider conversations,
+  and rejection of oversized context. HTTP provider tests use a local mock.
+- Docker Desktop's Linux engine/WSL integration was unavailable. Attempts to run
+  `docker compose config --quiet`, build web/backend images and execute
+  `scripts/verify-knowledge.sh` failed before validation/build/test execution.
+  Compose startup connection checks and the Docker end-to-end browser fixture
+  could not be rerun in this session. No database schema or infrastructure
+  configuration changed. Rerun these checks with Docker available before
+  deployment. No live AI call or Railway deployment was performed.
 
 ## Historical verification (before electrical retrieval)
 

@@ -4,7 +4,8 @@ A project by Eric Rand and Robin Robert Antonis: an electrical equipment selecti
 assistant for Estonia/EU, built on the existing React + TypeScript frontend and
 Java/Maven Spring Boot backend. Chat retrieves curated knowledge, performs
 applicable deterministic checks/calculations and returns sources and missing data.
-Follow-up details stay in page memory and clear on refresh or **New problem**.
+Up to eight recent user messages provide short-term memory for follow-ups;
+refresh or **New problem** clears it. The chat shows its remembered message count.
 Knowledge and catalog data use PostgreSQL; chat content is not saved.
 
 Read [Project context](docs/project-context.md) and [Electrical knowledge](docs/knowledge.md)
@@ -104,3 +105,7 @@ For isolated PostgreSQL migration/retrieval tests, run
 End-to-end browser checks use `./scripts/verify-browser.sh` after
 `cd web && npm ci && npx playwright install chromium`. This creates an isolated
 local stack with a mock AI; see [verification details](docs/knowledge.md).
+
+For chat-memory frontend checks without Docker or AI credentials, run
+`npm run build && npm run test:chat-memory` from `web/` after installing Chromium.
+This starts and stops its own local preview and mocks only the chat endpoint.

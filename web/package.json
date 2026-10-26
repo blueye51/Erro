@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test:browser": "node test/knowledge.browser.mjs"
+    "test:browser": "node test/knowledge.browser.mjs",
+    "test:chat-memory": "node test/chat-memory.browser.mjs"
   },
   "dependencies": {
     "react": "^19.2.8",

@@ -95,4 +95,36 @@ class ElectricalTest {
         assertThat(problems.resolve("I need an outdoor enclosure",List.of("7.5 kW motor 400 V")).reset()).isTrue();
         assertThat(problems.resolve("New problem: another motor",List.of("400 V")).question()).doesNotContain("400 V");
     }
+
+    @Test void longFollowupsRetainChronologicalUserMemory() {
+        var problems=new ProblemContextService(intents);
+        var previous=List.of("My name is Eric", "The project is in Estonia");
+        var followup="Please use my earlier details. "+"Explain the next steps clearly. ".repeat(25);
+        var problem=problems.resolve(followup,previous);
+        assertThat(problem.reset()).isFalse();
+        assertThat(problem.previousMessages()).containsExactlyElementsOf(previous);
+        assertThat(problem.question()).contains("My name is Eric", "Estonia", followup);
+    }
+
+    @Test void relatedComponentsAndResetDiscussionDoNotDiscardMemory() {
+        var problems=new ProblemContextService(intents);
+        for(var followup:List.of("What enclosure would work for it?", "What about the enclosure?",
+                "Can you explain when to use the new problem button?")) {
+            var problem=problems.resolve(followup,List.of("7.5 kW motor 400 V"));
+            assertThat(problem.reset()).as(followup).isFalse();
+            assertThat(problem.previousMessages()).containsExactly("7.5 kW motor 400 V");
+        }
+    }
+
+    @Test void resetAndEmptyContextCannotLeakEarlierUserMessages() {
+        var problems=new ProblemContextService(intents);
+        for(var followup:List.of("New problem: another motor", "I need an outdoor enclosure")) {
+            var problem=problems.resolve(followup,List.of("7.5 kW motor 400 V"));
+            assertThat(problem.reset()).isTrue();
+            assertThat(problem.previousMessages()).isEmpty();
+            assertThat(problem.question()).isEqualTo(followup);
+        }
+        assertThat(problems.resolve("What is my name?",List.of()).previousMessages()).isEmpty();
+        assertThat(problems.resolve("What is my name?",null).question()).isEqualTo("What is my name?");
+    }
 }

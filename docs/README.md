@@ -13,7 +13,7 @@ admin ingestion/debugging, calculations, catalog validation and Railway rollout.
 frontend behavior, deployment settings, and verification.
 
 [Homepage](homepage.md) covers the main chat workspace, starter prompts,
-About us/Contact us navigation, founder photos, email contact and verification.
+About us/Contact us navigation, founder bios, email contact and verification.
 
 [Web proxy](web-proxy.md) covers the Nginx image, private API forwarding, runtime
 variables, local production/development modes, and proxy regression tests.

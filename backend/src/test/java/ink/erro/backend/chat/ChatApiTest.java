@@ -222,6 +222,54 @@ class ChatApiTest {
     }
 
     @Test
+    void providerReceivesLatestQuestionAndChronologicalUserMemorySeparately() throws Exception {
+        var mapper=JsonMapper.builder().build();
+        var previous=List.of("My name is Eric", "I am planning a project in Estonia");
+        var question="What is my name? "+"Please use the details I already gave you. ".repeat(15);
+        mvc.perform(post("/api/chat").contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(new ChatController.ChatMessage(question,previous))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.contextReset").value(false));
+        var providerRequest=mapper.readTree(requests.remove());
+        var envelope=mapper.readTree(providerRequest.path("input").asText());
+        assertThat(envelope.path("userQuestion").asText()).isEqualTo(question.strip());
+        assertThat(envelope.path("previousUserMessages").get(0).asText()).isEqualTo(previous.get(0));
+        assertThat(envelope.path("previousUserMessages").get(1).asText()).isEqualTo(previous.get(1));
+        assertThat(providerRequest.path("instructions").asText()).contains("Answer userQuestion as the latest message", "Prior assistant replies are not supplied");
+        assertThat(providerRequest.path("store").asBoolean()).isFalse();
+        assertThat(providerRequest.has("previous_response_id")).isFalse();
+
+        mvc.perform(post("/api/chat").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"message\":\"What is my name?\"}"))
+                .andExpect(status().isOk());
+        var fresh=mapper.readTree(mapper.readTree(requests.remove()).path("input").asText());
+        assertThat(fresh.path("previousUserMessages").isEmpty()).isTrue();
+        assertThat(fresh.toString()).doesNotContain("Eric");
+    }
+
+    @Test
+    void providerReceivesNoStaleContextAfterAReset() throws Exception {
+        var mapper=JsonMapper.builder().build();
+        mvc.perform(post("/api/chat").contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(new ChatController.ChatMessage("New problem: Hello",List.of("My name is Eric")))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.contextReset").value(true));
+        var envelope=mapper.readTree(mapper.readTree(requests.remove()).path("input").asText());
+        assertThat(envelope.path("previousUserMessages").isEmpty()).isTrue();
+        assertThat(envelope.toString()).doesNotContain("Eric");
+    }
+
+    @Test
+    void rejectsContextAboveMessageAndCharacterLimitsBeforeCallingProvider() throws Exception {
+        var mapper=JsonMapper.builder().build();
+        for(var previous:List.of(java.util.Collections.nCopies(9,"Earlier message"),
+                java.util.Collections.nCopies(4,"x".repeat(7000)))) {
+            mvc.perform(post("/api/chat").contentType(MediaType.APPLICATION_JSON)
+                    .content(mapper.writeValueAsString(new ChatController.ChatMessage("Hello",previous))))
+                    .andExpect(status().isBadRequest());
+        }
+        assertThat(requests).isEmpty();
+    }
+
+    @Test
     void retrievedInjectionIsDataAndSourcesAreMappedFromEvidence() throws Exception {
         var chunk=java.util.UUID.randomUUID();
         var source=new KnowledgeModels.Source("K-"+chunk,java.util.UUID.randomUUID(),chunk,"Motor guide","Fixture publisher","https://example.com/guide","Protection","","1","","",null,null,"EU","MANUFACTURER_GUIDE","LICENSED","Fixture permission",.8,.9);

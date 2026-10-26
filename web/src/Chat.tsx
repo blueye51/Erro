@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { sendMessage, type ChatReply } from './chat'
+import { rememberMessage, sendMessage, type ChatReply } from './chat'
 import { AnswerDetails } from './AnswerDetails'
 import { Arrow } from './Brand'
 
@@ -19,7 +19,8 @@ export function Chat({ active }: { active: boolean }) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
   const sending = useRef(false)
-  const problemContext = useRef<string[]>([])
+  const [problemContext, setProblemContext] = useState<string[]>([])
+  const [memoryNotice, setMemoryNotice] = useState('')
   const nextId = useRef(0)
   const messageList = useRef<HTMLElement>(null)
   const composer = useRef<HTMLTextAreaElement>(null)
@@ -39,9 +40,9 @@ export function Chat({ active }: { active: boolean }) {
     setMessages((current) => [...current, { id, role: 'user', text }])
     setDraft('')
     try {
-      const answer = await sendMessage(text, problemContext.current)
-      problemContext.current = [...(answer.contextReset ? [] : problemContext.current), text].slice(-8)
-      while (problemContext.current.join('').length > 24000) problemContext.current.shift()
+      const answer = await sendMessage(text, problemContext)
+      setProblemContext(rememberMessage(problemContext, text, answer.contextReset))
+      setMemoryNotice(answer.contextReset ? 'Chat memory restarted because the problem changed.' : '')
       const replyId = nextId.current++
       setMessages((current) => [
         ...current,
@@ -67,7 +68,8 @@ export function Chat({ active }: { active: boolean }) {
       {messages.length > 0 && <div className="problem-toolbar">
         <div><p className="eyebrow">Electrical assistant · Estonia / EU</p><h1>Your project</h1></div>
         <button className="problem-reset" disabled={pending} onClick={() => {
-          problemContext.current = []
+          setProblemContext([])
+          setMemoryNotice('')
           setMessages([])
           setDraft('')
           setError('')
@@ -202,8 +204,12 @@ export function Chat({ active }: { active: boolean }) {
           {error}
         </p>
       )}
+      {memoryNotice && <p className="chat-status" role="status">{memoryNotice}</p>}
       <p className="chat-status" id="chat-status">
-        {messages.length ? 'Keep adding details here, or start a new problem for different equipment. ' : ''}Messages stay in this tab and clear on refresh.
+        {problemContext.length > 0
+          ? `Remembering ${problemContext.length} of your recent messages. `
+          : 'Remembers up to 8 of your recent messages. '}
+        New problem or refresh clears chat memory.
       </p>
       {messages.length === 0 && <div className="starter-prompts" aria-label="Ideas to get started">
         {starterPrompts.map(prompt => <button key={prompt.title} type="button" onClick={() => {

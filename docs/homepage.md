@@ -3,15 +3,15 @@
 On 2026-10-06 Eric made the electrical assistant the main website experience.
 Visitors can start typing immediately. This replaces the earlier founder-first
 homepage and collapsed AI corner, while retaining the cream/green palette, serif
-headings, brand mark, founder photos and supplied contact email.
+headings, brand mark and supplied contact email.
 
 ## Usage
 
 - **Chat** (the default view, also `/#home`) opens the main assistant workspace.
   The initial view offers motor protection, component comparison and parts-list
   prompts. Clicking one fills the composer for editing; only Send or Enter submits.
-- **About us** (`/#about`) shows Eric Rand and Robin Robert Antonis, their supplied
-  photos and draft bios. **Contact us** (`/#contact`) shows the supplied
+- **About us** (`/#about`) shows Eric Rand and Robin Robert Antonis with text-only
+  founder cards and draft bios. **Contact us** (`/#contact`) shows the supplied
   `eric.rand66@gmail.com` address and a `mailto:` button. The site does not send
   email or collect form submissions.
 - Top navigation and browser back/forward switch views. The same Chat component
@@ -20,6 +20,10 @@ headings, brand mark, founder photos and supplied contact email.
   stealing focus. Direct links work after refresh.
 - **New problem** clears messages, draft and active problem context. A full refresh
   also clears them; no chat data enters local/session storage or cookies.
+- Short-term chat memory keeps up to eight successful user inputs (24,000
+  characters total) for follow-ups. The composer status shows the remembered
+  message count; automatic backend resets show a notice. Long follow-ups do not
+  lose memory simply because of their length. See [Chat memory](chat.md#short-term-chat-memory).
 - Enter sends; Shift+Enter inserts a newline. Pending requests disable duplicate
   sends. Errors restore the draft for retry. Replies retain safe Markdown and
   expandable sources, calculations, assumptions, warnings and missing information.
@@ -40,7 +44,7 @@ The frontend does not display invented products, quotes or availability. Existin
 backend knowledge retrieval, technical validation and catalog candidates remain
 in use without changes to the chat API or Railway variables.
 
-## Components, copy and photos
+## Components and copy
 
 - `web/src/App.tsx`: hash navigation, page titles, focus, header and footer.
 - `web/src/Chat.tsx`: existing chat flow, composer, starter prompts and active
@@ -50,7 +54,9 @@ in use without changes to the chat API or Railway variables.
 - `web/src/App.css`: responsive layout and visual styling.
 - `web/index.html`: initial page title and search description.
 
-The photos remain unchanged at `web/public/photos/eric.png` and `robin.png`.
+Eric requested permanent removal of both founder images on 2026-10-26. The image
+markup, photo captions, related styles and both portrait assets have been removed.
+About us has no profile pictures, image placeholders or portrait downloads.
 The names/email were supplied by Eric. Founder bios are editable provisional
 copy, not verified qualifications or business credentials. No external fonts,
 tracking scripts or new UI dependencies are introduced.
@@ -114,3 +120,18 @@ desktop/mobile screenshots were inspected. Header/cell structure, escaped pipes,
 inline formatting, preserved code blocks, keyboard horizontal scrolling and
 HTML/URL safety checks all passed. Railway deployment remains outside this local
 verification.
+
+## Portrait removal — 2026-10-26
+
+Both founder names and draft bios remain. The founder cards use a simple text
+layout with a top divider and adapt from two columns to one on mobile. Rebuild
+and redeploy web to remove the portraits from the live site and its public assets;
+this change does not rewrite Git history or remove copies in old deployments.
+
+Frontend build, lint and the chat-memory browser suite passed. Browser checks
+confirmed both names/bios, no portrait elements or image requests, no portrait
+files in the production build, working About/contact/chat navigation, and no
+horizontal overflow at 1440, 768, 390 and 320px. Desktop/mobile screenshots were
+inspected. Chat checks covered sending, loading/errors, Markdown, short-term
+memory and clearing messages on refresh using mock API replies. Railway
+deployment was not performed.

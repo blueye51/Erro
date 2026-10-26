@@ -15,6 +15,16 @@ export type ChatReply = {
   validations: Check[]; products: { id: string; specifications: Record<string, unknown>; checks: Check[] }[]
   contextReset: boolean
 }
+export const MAX_CONTEXT_MESSAGES = 8
+export const MAX_CONTEXT_CHARS = 24000
+
+export function rememberMessage(previous: string[], message: string, reset = false): string[] {
+  const recent = [...(reset ? [] : previous), message].slice(-MAX_CONTEXT_MESSAGES)
+  let characters = recent.reduce((total, text) => total + text.length, 0)
+  while (characters > MAX_CONTEXT_CHARS) characters -= recent.shift()!.length
+  return recent
+}
+
 export async function sendMessage(message: string, problemContext: string[] = []): Promise<ChatReply> {
   let response: Response
   try {

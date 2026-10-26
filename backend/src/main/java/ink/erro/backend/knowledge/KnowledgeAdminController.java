@@ -37,7 +37,8 @@ public class KnowledgeAdminController {
     @PostMapping("/debug") public Map<String,Object> debug(@Valid @RequestBody DebugInput input) {
         var problem=problems.resolve(input.question(),input.problemContext());
         var context=electrical.prepare(problem.question(),problem.assumptions());
-        return Map.of("systemInstruction",AiService.systemInstruction(),"input",Map.of("userQuestion",problem.question(),"referenceData",context),"contextReset",problem.reset());
+        return Map.of("systemInstruction",AiService.systemInstruction(),"input",Map.of("userQuestion",input.question().strip(),
+                "previousUserMessages",problem.previousMessages(),"referenceData",context),"contextReset",problem.reset());
     }
     @GetMapping("/products") public List<Map<String,Object>> products(@RequestParam(defaultValue="0") @Min(0) @Max(100000) int offset) { return products.list(offset); }
     @PostMapping("/products") public Map<String,UUID> product(@Valid @RequestBody ProductModels.ProductInput input) { return Map.of("id",products.save(input)); }
