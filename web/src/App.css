@@ -511,4 +511,12 @@ h1 em { color: var(--green); font-weight: 400; }
 .attach-button:disabled, .attachment-remove:disabled { opacity: .45; cursor: default; }
 .attachment-help { margin: 10px 4px 0; font-size: 11px; line-height: 1.5; color: #687260; }
 .message-files { font-size: 12px; opacity: .7; overflow-wrap: anywhere; }
+.saved-chat-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.saved-chat-toolbar label { display: grid; gap: 6px; min-width: 0; flex: 1 1 220px; font-size: 11px; color: var(--text-soft); }
+.saved-chat-toolbar select { width: 100%; max-width: 100%; min-height: 42px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; color: var(--text); background: var(--cream, #fafbf5); font: inherit; font-size: 13px; }
+.guest-delete, .load-earlier { padding: 8px 4px; border: 0; background: none; color: #665c52; font: inherit; font-size: 11px; cursor: pointer; }
+.guest-delete:hover { text-decoration: underline; }
+.guest-delete:disabled { opacity: .45; cursor: default; }
+.load-earlier { align-self: center; text-decoration: underline; }
+.reply-pending button { margin-left: 10px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 5px; background: transparent; font: inherit; font-size: 11px; cursor: pointer; }
 @media (max-width: 600px) { .chat-composer .composer-toolbar { flex-wrap: wrap; gap: 8px; } .chat-composer .composer-status { order: 3; flex-basis: 100%; } .chat-composer .send-button { margin-left: auto; } }

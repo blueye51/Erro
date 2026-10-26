@@ -11,13 +11,14 @@ import org.springframework.stereotype.Service;
 import ink.erro.backend.ai.AiProperties;
 import tools.jackson.databind.json.JsonMapper;
 
-/** Resource containment for untrusted parsers. At most two child JVMs run through DocumentStore. */
+/** Resource containment for untrusted parsers. At most two child JVMs run across both chat APIs. */
 @Primary
 @Service
 public class IsolatedDocumentProcessor implements DocumentProcessor {
     private final AiProperties ai;
     private final DocumentProperties properties;
     private final JsonMapper json=JsonMapper.builder().build();
+    private final java.util.concurrent.Semaphore slots=new java.util.concurrent.Semaphore(2,true);
     private final java.util.concurrent.ScheduledExecutorService janitor=java.util.concurrent.Executors.newSingleThreadScheduledExecutor(
         Thread.ofPlatform().daemon().name("document-temp-cleanup").factory());
     public IsolatedDocumentProcessor(AiProperties ai,DocumentProperties properties) {
@@ -26,6 +27,15 @@ public class IsolatedDocumentProcessor implements DocumentProcessor {
     }
     @jakarta.annotation.PreDestroy public void close() { janitor.shutdownNow(); }
     public DocumentModels.Extraction extract(String filename,byte[] bytes,Consumer<String> progress) throws IOException {
+        progress.accept("Waiting for a document processor");
+        try {
+            if(!slots.tryAcquire(20,TimeUnit.SECONDS)) throw DocumentException.invalid("Document processors are busy. Retry this file shortly.");
+        } catch(InterruptedException e) {
+            Thread.currentThread().interrupt();throw new IOException("Document processing cancelled.");
+        }
+        try { return process(filename,bytes,progress); } finally { slots.release(); }
+    }
+    private DocumentModels.Extraction process(String filename,byte[] bytes,Consumer<String> progress) throws IOException {
         Path directory=Files.createTempDirectory("erro-document-",PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------")));
         Process process=null;
         try {

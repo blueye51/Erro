@@ -27,14 +27,25 @@ http.createServer(async (request, response) => {
   let body = ''
   for await (const chunk of request) body += chunk
   const envelope = JSON.parse(body)
+  if (Array.isArray(envelope.input)) {
+    response.setHeader('Content-Type', 'application/json')
+    const filename = envelope.input[0].content[0].text
+    if (filename.includes('broken.png')) { response.writeHead(503); return response.end(JSON.stringify({ error: 'Fixture vision failure' })) }
+    const text = JSON.stringify({ coordinateSpace: 'NORMALIZED_1000', items: [{ reference: 'Q1', description: 'C16 fixture breaker', quantity: 1, unit: 'pcs', basis: 'SYMBOL_COUNT', x: 500, y: 500 }], notes: 'Local fixture only' })
+    return response.end(JSON.stringify({ status: 'completed', output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text }] }] }))
+  }
   const input = JSON.parse(envelope.input)
-  await new Promise(resolve => setTimeout(resolve, 500))
+  if ('previousConversation' in input && envelope.input.length > 32000) {
+    response.writeHead(400); return response.end(JSON.stringify({ error: 'Fixture context limit exceeded' }))
+  }
+  await new Promise(resolve => setTimeout(resolve, input.userQuestion.includes('test-slow') ? 5000 : 500))
   response.setHeader('Content-Type', 'application/json')
   if (input.userQuestion.includes('test-error')) {
     response.writeHead(503)
     return response.end(JSON.stringify({ error: 'Fixture upstream failure' }))
   }
   const id = input.referenceData.retrieval.hits[0]?.source.id
-  const text = input.userQuestion.includes('test-table') ? tableReply : `**Engineering reply.** Confirm the nameplate and protection coordination.${id ? ` [${id}]` : ''}\n\n- Review the supplied conditions.\n- Resolve the missing information.`
+  const document = input.documentData?.excerpts[0]?.id
+  const text = input.userQuestion.includes('test-table') ? tableReply : `**Engineering reply.** Confirm the nameplate and protection coordination.${id ? ` [${id}]` : ''}${document ? ` [${document}]` : ''}\n\n- Review the supplied conditions.\n- Resolve the missing information.`
   response.end(JSON.stringify({ status: 'completed', output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text }] }] }))
-}).listen(3000, '0.0.0.0')
+}).listen(Number(process.env.FIXTURE_PORT || 3000), process.env.FIXTURE_HOST || '0.0.0.0')

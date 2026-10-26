@@ -36,6 +36,9 @@ docker compose build web backend minio
 docker compose --env-file /dev/null -p "$run_id" -f compose.yaml -f "$override" up -d --no-build --wait
 address=$(docker compose --env-file /dev/null -p "$run_id" -f compose.yaml -f "$override" port web 8080)
 export ERRO_TEST_URL="http://$address" ERRO_TEST_ADMIN_TOKEN="$KNOWLEDGE_ADMIN_TOKEN"
+# Guest mutations require the actual randomly assigned browser origin.
+export CHAT_ALLOWED_ORIGINS="$ERRO_TEST_URL"
+docker compose --env-file /dev/null -p "$run_id" -f compose.yaml -f "$override" up -d --no-deps --force-recreate backend
 # Compose waits for infrastructure; the backend also needs time for migration/startup.
 for attempt in $(seq 1 60); do
   status=$(curl -s -o /dev/null -w '%{http_code}' "$ERRO_TEST_URL/api/admin/knowledge/documents")
@@ -45,3 +48,4 @@ done
 docker compose --env-file /dev/null -p "$run_id" -f compose.yaml -f "$override" logs backend
 cd web
 node test/knowledge.browser.mjs
+node test/guest-live.browser.mjs

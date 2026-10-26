@@ -8,13 +8,13 @@ automatic declaration of installation suitability or compliance.
 
 ## Architecture
 
-`ChatController` accepts the existing `message` plus optional bounded
-`problemContext` (up to eight previous user messages, 24,000 characters total).
-`ChatService` resolves the active problem with `ProblemContextService`, calls
-`ElectricalContextService`, generates through the existing `AiService`, and maps
-citations with `CitationMapper`. The response keeps `reply` for compatibility and
-adds `requestId`, `sources`, `calculations`, `assumptions`, `warnings`,
-`missingInformation`, `validations`, `products`, and `contextReset`.
+The website's `GuestController` stores anonymous guest conversations and queues
+answers. `GuestJobs` selects bounded saved context and calls `ChatService` for
+`ProblemContextService`, `ElectricalContextService`, `AiService` generation and
+`CitationMapper`. Responses include `reply`, `requestId`, `sources`, `calculations`,
+`assumptions`, `warnings`, `missingInformation`, `validations`, `products` and
+`contextReset`. Full replies/details are saved. The earlier `ChatController`
+`POST /api/chat` remains available for stateless compatibility.
 
 The electrical context runs deterministic intent classification, parameter
 normalization, calculations, evidence retrieval and product checks. General
@@ -23,20 +23,18 @@ English/limited Estonian heuristics, not complete natural-language understanding
 Unknown or conflicting values remain unresolved. Inspect the debugger for every
 new query pattern before treating extracted values as dependable.
 
-The browser retains previous user inputs only for the active problem. There are
-no accounts, saved chats, chat database rows, or browser storage. **New problem**
-clears context and messages. Obvious equipment/topic changes reset inherited
-parameters; clearly linked component follow-ups retain them. Message length
-alone does not reset memory. Ambiguous overlapping changes need the user's
-explicit reset. Previous AI replies are never used as
-technical input. Refreshing clears everything, including the administrator token.
+[Guest chats](guest-chats.md) documents browser-cookie identity, ownership,
+persistence, deletion and context selection. Refresh restores conversations.
+New chats isolate inherited inputs. Obvious equipment/topic changes reset technical
+context without deleting history; clearly linked follow-ups retain it. Recent
+assistant prose may support conversational continuity, but generated values never
+enter deterministic technical extraction. Administrator tokens remain page-only.
 
-Generation receives the latest `userQuestion` separately from chronological
-`previousUserMessages` accepted by `ProblemContextService`. This makes follow-up
-context explicit while retrieval and deterministic checks still use the combined
-problem. The admin debugger exposes the same envelope. The chat UI shows how
-many prior user messages it remembers and announces automatic context resets.
-See [Chat memory](chat.md#short-term-chat-memory) for limits and frontend checks.
+Generation separates the latest `userQuestion`, accepted `previousUserMessages`,
+and recent `previousConversation`. Saved history is selected within a 32,000-character
+serialized envelope, with citation IDs limited to evidence actually supplied.
+The standalone admin debugger retains the legacy electrical envelope; it does
+not inspect a guest's stored dialogue, uploaded files or final packed prompt.
 
 ## Database and migration safety
 
@@ -48,11 +46,13 @@ Spring Boot's Flyway starter applies:
   permitted. Ordinary PostgreSQL remains supported; no image/version change is
   made to an existing database.
 - `V3__starter_source_directory.sql`: 20 small source entries and searchable chunks.
+- `V4__guest_chats.sql`: private guests, chats, messages, requests and attachments
+  in the separate `erro_chat` schema. Flyway history remains in `erro_knowledge`.
 
-Application tables and Flyway history are in the dedicated `erro_knowledge`
-schema. No public application tables are altered, dropped or automatically
+Knowledge/catalog tables and Flyway history are in `erro_knowledge`; guest data
+is in `erro_chat`. No public application tables are altered, dropped or automatically
 baselined. Existing unrelated data is preserved. The backend database role must
-be able to create this schema and tables, and read/write them afterwards.
+be able to create these schemas and tables, and read/write them afterwards.
 Migration failures stop startup. Flyway clean is disabled. Use the usual database
 backup/change-review process before production schema changes. No Hibernate
 schema generation is used.
@@ -66,7 +66,9 @@ in the future are excluded. Dates are nullable rather than invented.
 
 Indexes cover text search (GIN), source scope/standard, document chunk order,
 embedding model, manufacturer/type/current and product relationships. JDBC query
-timeouts bound database retrieval. No raw chat or retrieval text is persisted.
+timeouts bound database retrieval. Guest chats and extracted files are persisted
+privately in `erro_chat`, separately from permanent knowledge. Retrieval telemetry
+is not saved as a separate log.
 
 ## Retrieval and embeddings
 
@@ -166,7 +168,7 @@ paths/titles and edition metadata.
 
 URL fields are validated HTTP(S) **citation links only**, never fetched. This
 avoids SSRF and local filesystem access. Permanent knowledge ingestion still
-accepts reviewed Markdown/text, not PDF or remote URL extraction. Temporary
+accepts reviewed Markdown/text, not PDF or remote URL extraction. Private
 [chat document analysis](documents.md) now supports uploads separately; none
 are automatically added to the knowledge database. Convert legally available
 knowledge sources to reviewed Markdown/text first. Tables larger than a chunk
@@ -273,8 +275,9 @@ URL, section, version/edition/dates, standard, jurisdiction, authority, license
 and relevance. A citation proves provenance, not that a generated sentence is
 entailed by the excerpt. Uncited generated claims remain unverified.
 
-The admin debugger returns the exact system instruction and generation input,
-including query expansion, parameters, chunk contents/scores, products and checks.
+The admin debugger returns the system instruction and standalone electrical
+generation input, including query expansion, parameters, chunk contents/scores,
+products and checks. Saved guest dialogue/files are outside this debugger.
 It never calls the answer model; configured query embeddings may incur usage.
 Ordinary users receive explanation details, not the debug prompt or retrieval
 chunks. APIs use no-store; React escapes metadata and skips raw Markdown HTML.
@@ -282,7 +285,8 @@ chunks. APIs use no-store; React escapes metadata and skips raw Markdown HTML.
 Logs include a random request ID, detected intents, normalized numeric inputs,
 a query fingerprint, retrieved document IDs/scores, calculation/check names and
 provider error status. Raw user text, prompts, provider error bodies, credentials
-and admin tokens are not logged or stored. Inspect actual retrieval queries in
+and admin tokens are not logged. Guest messages and full answers are privately
+stored as documented above. Inspect standalone retrieval queries in
 the protected debugger. There is no persistent `chat_retrieval_log` table.
 
 ## Configuration and deployment
@@ -309,10 +313,11 @@ managed schema. Deployment must use the updated backend and web images.
 
 All are mapped through Compose and listed in `.env.example`. Generation retains
 the existing `AI_*` variables. Embeddings time out after 12 seconds; generation
-uses `AI_TIMEOUT` (default 60s); the browser allows 90s and Nginx 100s. Increase
-these coherently if changing timeouts. Large documents should be sectioned before
+uses `AI_TIMEOUT` (default 60s); saved chat requests are acknowledged immediately
+and polled, so reload does not cancel generation. Nginx allows 100s per request. Large documents should be sectioned before
 importing. The public chat still uses the existing public access model; this
-change adds admin authorization, not visitor accounts or a general rate limiter.
+application uses anonymous cookie sessions, without visitor logins. Queue limits
+and upload throttling apply as documented in the guest/document guides.
 
 Run locally:
 
@@ -337,9 +342,9 @@ the script executes them. `node --test web/test/proxy.test.mjs` tests Nginx afte
 
 After Railway deployment:
 
-1. Confirm Flyway schema v3 and successful PostgreSQL/Redis startup checks. Confirm
+1. Confirm Flyway migration v4 and successful PostgreSQL/Redis startup checks. Confirm
    S3 is skipped when disabled. Existing services/domain remain unchanged.
-2. Open `https://erro.ink/healthz`; verify chat via the same-origin `/api/chat`.
+2. Open `https://erro.ink/healthz`; verify saved chat via same-origin `/api/guest` and `/api/chats`.
 3. Unlock `/#knowledge` and inspect the 20 starter sources. An unauthenticated
    GET to `/api/admin/knowledge/documents` must return 401, or 404 when disabled.
 4. Test retrieval for `IEC 60947-2 breaking capacity` and the motor example;
@@ -350,8 +355,12 @@ After Railway deployment:
 6. Ask the 9 kA/6 kA breaker question and the AC-coil/DC-supply question. Confirm
    deterministic FAIL. Ask the motor example; confirm no invented PF/efficiency
    or nominal-current-only breaker choice. Verify real provider citation behavior.
-7. Test a follow-up, start a new problem, and refresh; previous parameters must not
-   survive the reset/refresh. Verify source details on a phone-sized viewport.
+7. Test a follow-up and refresh; messages and files must be restored. Start a new
+   chat and verify isolation, then delete all guest data and verify the old chat
+   is unavailable. Verify source details on a phone-sized viewport.
+
+Current guest persistence verification is recorded in [Guest chats](guest-chats.md).
+The records below describe earlier versions before saved chats.
 
 ## Verification record — 2026-10-05/06
 

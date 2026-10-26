@@ -7,16 +7,16 @@ This replaces the earlier direct browser-to-public-backend deployment.
 
 ```mermaid
 flowchart LR
-    B[Visitor's browser] -->|HTTPS / and /api/chat| W[web: Nginx]
-    W -->|private HTTP :8080 /api/chat| A[backend: Spring Boot]
+    B[Visitor's browser] -->|HTTPS / and /api/*| W[web: Nginx]
+    W -->|private HTTP :8080 /api/*| A[backend: Spring Boot]
     A -->|private| P[PostgreSQL]
     A -->|private| R[Redis]
     A -->|HTTPS| AI[DeepSeek]
 ```
 
-Only the web service needs a public domain. The `/api/chat` route remains
-available to visitors through that domain; making the backend private does not
-add authentication. Database, Redis, and storage endpoints are not published
+Only web needs a public domain. Saved chat routes use guest cookies/CSRF through
+that domain; making the backend private does not itself authenticate visitors.
+The earlier `/api/chat` remains a stateless compatibility route. Database, Redis, and storage endpoints are not published
 through Nginx. New service routes require an explicit configuration change.
 
 ## Files and behavior
@@ -28,7 +28,7 @@ through Nginx. New service routes require an explicit configuration change.
 | `web/nginx/nginx.conf` | Non-root runtime paths and access logs without request bodies, query strings, or authorization headers. |
 | `web/nginx/default.conf.template` | Static hosting, API forwarding, web health endpoint, caching, and timeouts. |
 | `web/nginx/15-api-resolvers.envsh` | Reads private DNS servers from `/etc/resolv.conf` and checks that `API_UPSTREAM` is an HTTP origin with a port. |
-| `web/src/chat.ts` | Always POSTs to the relative URL `/api/chat`; no backend hostname is embedded in browser code. |
+| `web/src/guestChat.ts` | Calls relative `/api/guest` and `/api/chats` with same-origin cookies and CSRF; no backend hostname in browser code. |
 | `web/test/proxy.test.mjs` | Exercises the real production image with a temporary private HTTP upstream and isolated Docker network. |
 
 Nginx serves `web/dist` at `/`, with `index.html` as the fallback for frontend
@@ -40,9 +40,10 @@ Both `/api` and `/api/*` are forwarded to the fixed `API_UPSTREAM`. Paths, query
 strings, methods, JSON bodies, and upstream status codes are preserved. API
 errors never fall through to `index.html`. Ordinary API requests use a 256 KiB
 body limit; the backend still validates the 8,000-character message limit.
-Only `/api/attachments/files` permits 21 MiB for multipart uploads, with 60-second
-send/read timeouts. Processing is asynchronous. `/api/attachments/problem` has
-a 1 KiB limit. POSTs on these two routes share a per-peer 20/minute rate limit
+`/api/chats/{uuid}/attachments` and legacy `/api/attachments/files` permit 21 MiB
+for multipart uploads, with 60-second send/read timeouts. Processing is
+asynchronous. Legacy `/api/attachments/problem` has a 1 KiB limit. POSTs on these
+attachment route shapes share a per-peer 20/minute rate limit
 with burst 8; GET polling and DELETE cleanup are excluded. The proxy tests include
 route-specific body-limit regressions. See [Documents](documents.md).
 
@@ -53,12 +54,14 @@ error until it is reachable again. Nginx does not retry requests or cache API
 replies, and proxy buffering is disabled.
 
 The proxy has a five-second connection timeout and a 100-second read timeout.
-The AI provider read timeout defaults to 60 seconds; the chat browser waits 90 seconds.
+The provider timeout defaults to 60 seconds. Saved chat POSTs acknowledge queued
+work immediately; the browser polls durable request status, including after refresh.
 The wiki's shorter 15-second timeout is deliberately not reused for AI replies.
-Forwarding preserves the incoming Host (including its port) and Origin headers.
+Forwarding preserves Host (including its port), Origin, Cookie, Set-Cookie and
+X-CSRF-Token. Cookies and CSRF values are never included in access logs.
 Keep `CHAT_ALLOWED_ORIGINS` set to the public web origins on the backend.
 
-No client-IP-based behavior is added. The proxy records its immediate peer in
+Upload throttling uses the immediate peer IP. The proxy records its immediate peer in
 `X-Forwarded-For`; Spring's default behavior does not trust forwarded headers.
 Any future authentication/rate-limiting work must review the actual ingress chain.
 
@@ -88,7 +91,7 @@ docker compose up --build -d
 ```
 
 Open <http://localhost:5173>. Compose maps host `WEB_PORT` (default 5173) to Nginx
-port 8080 and sets `API_UPSTREAM=http://backend:8080`. `/api/chat` goes through
+port 8080 and sets `API_UPSTREAM=http://backend:8080`. Guest chat traffic uses
 the same production proxy used on Railway. Rebuild web after frontend or Nginx
 source changes:
 

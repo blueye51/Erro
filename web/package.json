@@ -9,8 +9,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test:browser": "node test/knowledge.browser.mjs",
-    "test:chat-memory": "node test/chat-memory.browser.mjs",
-    "test:attachments": "node test/attachments.browser.mjs"
+    "test:guest-chat": "node test/guest-live.browser.mjs"
   },
   "dependencies": {
     "react": "^19.2.8",

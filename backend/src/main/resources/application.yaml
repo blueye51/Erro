@@ -49,6 +49,10 @@ server:
 chat:
   allowed-origins: ${CHAT_ALLOWED_ORIGINS:http://localhost:5173}
 
+guest-chat:
+  cookie-secure: ${CHAT_COOKIE_SECURE:true}
+  ttl: ${CHAT_GUEST_TTL:365d}
+
 ai:
   endpoint: ${AI_ENDPOINT:https://api.deepseek.com/responses}
   api-key: ${AI_API_KEY:}

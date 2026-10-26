@@ -5,16 +5,17 @@ is four services: `web`, `backend`, `Postgres`, and `Redis`. These names are use
 exactly in the variable references below; adjust references if services have
 different names. MinIO stays local. Amazon S3 can be connected later.
 
-Temporary chat attachments require rebuilding **both backend and web**. Keep the
-backend private and `S3_ENABLED=false`; no bucket, volume or migration is needed.
-Use one backend replica (or sticky routing), ephemeral writable `/tmp`, and RAM
-for two isolated parser JVMs; start with a 2 GiB container budget. Defaults are
-`DOCUMENTS_ENABLED=true`, `DOCUMENT_VISION_MODEL=deepseek-flash`,
-`DOCUMENT_TTL=30m`, `DOCUMENT_MAX_PROBLEMS=32`. Vision reuses backend `AI_API_KEY`
-and `AI_ENDPOINT`. The backend image includes fonts, and the web image scopes
-larger upload limits to the attachment route. Review per-peer upload throttling
-behind Railway's edge proxy. See [Documents](documents.md) for deployment limits,
-verification gaps and operational details.
+Saved guest chats and attachments require rebuilding **both backend and web**.
+Keep backend private and `S3_ENABLED=false`. Flyway migration V4 adds `erro_chat`
+in the existing database; its role must be allowed to create the schema. Guest
+state and work claims use PostgreSQL across replicas. No bucket or new volume is
+needed. Keep ephemeral writable `/tmp` and memory for two isolated parser JVMs
+per backend; start with 2 GiB and monitor actual load. Production defaults to
+`CHAT_COOKIE_SECURE=true` and `CHAT_GUEST_TTL=365d`. Do not copy the localhost
+HTTP cookie setting from Compose into Railway. Defaults for documents are
+`DOCUMENTS_ENABLED=true` and `DOCUMENT_VISION_MODEL=deepseek-flash`; vision reuses
+backend AI credentials. See [Guest chats](guest-chats.md) and [Documents](documents.md)
+for queues, retention, resource bounds and current verification results.
 
 This guide records the required deployment configuration. No Railway resources
 have been created or inspected from this workspace. The dashboard labels below
@@ -40,8 +41,8 @@ services needed for this release.
    commit to both backend and web; if GitHub autodeploy did not run, use Railway's
    command palette **Deploy Latest Commit** for each service. Check the commit
    shown on each deployment. The web service needs no new variables.
-4. In backend logs, verify Flyway applied migrations through version `3` in
-   `erro_knowledge`, followed by `PostgreSQL connection verified`,
+4. In backend logs, verify Flyway applied migrations through version `4`, with
+   knowledge/history in `erro_knowledge` and guest tables in `erro_chat`, followed by `PostgreSQL connection verified`,
    `Redis connection verified` and `Infrastructure ready`. Flyway runs at
    application startup; the pre-deploy command stays empty. The database user
    needs permission to create the dedicated schema. Keep the existing PostgreSQL
@@ -60,17 +61,18 @@ it. See [Electrical knowledge](knowledge.md) for optional embeddings and ingesti
 
 ```mermaid
 flowchart LR
-    B[Visitor's browser] -->|HTTPS website and /api/chat| W[web: erro.ink, Nginx]
+    B[Visitor's browser] -->|HTTPS website and /api/*| W[web: erro.ink, Nginx]
     W -->|private HTTP :8080| A[backend: Spring Boot]
     A -->|private connection| P[Postgres]
     A -->|private connection| R[Redis]
     A -->|HTTPS with server API key| AI[AI provider]
 ```
 
-The browser calls `/api/chat` on `erro.ink`. Nginx forwards it to the backend's
+The browser calls `/api/guest` and `/api/chats` on `erro.ink`. Nginx forwards it to the backend's
 private address. Only web needs a public HTTPS domain. Database connections also
-use Railway's private network. Chat content is not saved. The knowledge/catalog subsystem writes to the dedicated
-`erro_knowledge` PostgreSQL schema; Redis remains connected for future work. See [Web proxy](web-proxy.md) for the
+use Railway's private network. Guest chats and extracted evidence are saved
+in `erro_chat`; knowledge/catalog data use `erro_knowledge`. Redis remains
+connected for future work. See [Web proxy](web-proxy.md) for the
 implementation, matching the Nginx layout used in Eric's wiki.
 
 ## 1. Put the code on the deployment branch
@@ -156,6 +158,8 @@ SPRING_DATA_REDIS_USERNAME=${{Redis.REDISUSER}}
 S3_ENABLED=false
 INFRASTRUCTURE_VERIFY_ON_STARTUP=true
 CHAT_ALLOWED_ORIGINS=https://erro.ink,https://www.erro.ink
+CHAT_COOKIE_SECURE=true
+CHAT_GUEST_TTL=365d
 AI_ENDPOINT=https://api.deepseek.com/responses
 AI_MODEL=deepseek-flash
 AI_REASONING_EFFORT=none
@@ -255,7 +259,7 @@ the browser never uses or receives the private address. Railway's private networ
 encrypts inter-service traffic. [Private networking details](https://docs.railway.com/networking/private-networking/how-it-works).
 
 Delete **`VITE_API_BASE_URL`** from web and deploy the new image. The client always
-calls `/api/chat` on its own origin. `BACKEND_PROXY_TARGET` is used only by the
+calls `/api/*` on its own origin. `BACKEND_PROXY_TARGET` is used only by the
 local Vite development server. No AI key or database credentials belong on web.
 After this first migration, changing `API_UPSTREAM` requires a web redeploy to
 load the new runtime setting; the JavaScript does not need rebuilding for it.
@@ -270,11 +274,15 @@ visitors and requests to DeepSeek still use public networking. See
 
 First open `https://erro.ink/healthz` and confirm `ok`. Then open `https://erro.ink`,
 send a short message, and confirm a formatted reply. In browser developer tools,
-Network should show a POST to **`https://erro.ink/api/chat`**, returning 200 with
-a JSON `reply`. Refreshing should clear the page's messages. No chat tables,
-Redis keys, or saved conversations are created; the knowledge/catalog tables are expected.
+Network should show `GET /api/guest`, a Secure/HttpOnly/SameSite=Strict
+`erro_guest` cookie, `POST /api/chats/{id}/messages` returning 202, and request
+status polling. Refresh must restore messages and attached evidence. A new chat
+must isolate the conversation. A separate browser guest must receive 404 for the
+first guest's chat. **Delete all my data** must remove the old chats/files and
+rotate the cookie. Follow the detailed [guest verification](guest-chats.md).
 
-To test through the same public web proxy:
+The retained stateless compatibility endpoint can also test provider connectivity
+through the same proxy (it does not save a guest conversation):
 
 ```sh
 curl -i 'https://erro.ink/api/chat' \
@@ -284,9 +292,8 @@ curl -i 'https://erro.ink/api/chat' \
 ```
 
 This uses the backend's provider account and makes a real AI request if a key is
-configured. No provider key is sent from the browser or curl command. The current
-API has no login or application rate limiter, so public requests use that
-account; CORS is not authentication.
+configured. No provider key is sent from the browser or curl command. The legacy API has no visitor login; public calls use that account.
+Cookie-scoped saved chat routes enforce ownership, CSRF and queue bounds.
 
 After these checks pass, remove any public domain on the backend service and
 verify chat again. PostgreSQL, Redis, and backend can then remain private.
@@ -297,6 +304,7 @@ verify chat again. PostgreSQL, Redis, and backend can then remain private.
 | JDBC URL error | `DATABASE_URL` must start with `jdbc:postgresql://`; do not use the template URL unchanged. |
 | Web does not load | Confirm the new web Dockerfile is deployed, custom start/build overrides are empty, and the web domain targets `PORT=8080`. |
 | Nginx 502 / 504 on `/api/chat` | Check backend runtime logs, private service hostname, matching port 8080, and that both services are in the same project/environment. |
+| Guest session/CSRF failure | Reload for a fresh session, confirm cookies are enabled, HTTPS secure cookies, and exact `CHAT_ALLOWED_ORIGINS`. |
 | Browser CORS rejection | Add the exact page origin to backend `CHAT_ALLOWED_ORIGINS`, then redeploy backend. |
 | Browser still calls the old backend public URL | Deploy the new web image and reload the page; an old frontend bundle is still being served or open. |
 | `/api/chat` returns the website HTML | The old static host may still be deployed. Confirm web runs the Nginx Dockerfile and proxy configuration. |

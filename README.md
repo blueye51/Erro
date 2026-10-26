@@ -4,13 +4,13 @@ A project by Eric Rand and Robin Robert Antonis: an electrical equipment selecti
 assistant for Estonia/EU, built on the existing React + TypeScript frontend and
 Java/Maven Spring Boot backend. Chat retrieves curated knowledge, performs
 applicable deterministic checks/calculations and returns sources and missing data.
-Up to eight recent user messages provide short-term memory for follow-ups;
-refresh or **New problem** clears it. The chat shows its remembered message count.
-Knowledge and catalog data use PostgreSQL; chat content is not saved.
-Attach PDFs, images, Word/Excel, CSV or text directly in chat and ask follow-up
-questions about them. Documents are temporary, scoped to the active problem,
-and cleared on New problem/refresh with server expiration as a fallback.
-See [Temporary chat documents](docs/documents.md) for limits and accuracy boundaries.
+Visitors are anonymous guests, recognized by a private browser cookie. Chats,
+answers and extracted attachment evidence are saved in PostgreSQL and restored
+on refresh. **New chat** starts a separate conversation; **Delete all my data**
+erases the guest's chats and documents and starts a new guest session. No login
+is required. Saved history is selected within a bounded AI prompt so large
+attachments and long chats do not fill every follow-up request.
+See [Guest chats](docs/guest-chats.md) and [Chat documents](docs/documents.md).
 
 Read [Project context](docs/project-context.md) and [Electrical knowledge](docs/knowledge.md)
 for architecture, licensing, source management, product imports and verification.
@@ -33,7 +33,7 @@ docker compose up --build -d
 ```
 
 Open <http://localhost:5173> once Nginx is ready. It serves the built React app
-and forwards `/api/chat` privately to Spring Boot. MinIO's console is at
+and forwards `/api/*` privately to Spring Boot. MinIO's console is at
 <http://localhost:9001>. Local credentials and optional port overrides are in
 [.env.example](.env.example); copy it to `.env` to customize them. The first build
 takes longer because it compiles the final MinIO community release from source.
@@ -55,8 +55,10 @@ runtime `API_UPSTREAM` configuration, and proxy tests. Without a
 provider key, the stack still starts and chat reports that it is not configured.
 Text extraction works without a key; images and scanned/drawing PDFs require
 the backend AI configuration and `DOCUMENT_VISION_MODEL=deepseek-flash` (default).
-Rebuild both images for uploads. Use one backend replica and allow memory for
-two isolated parser processes; the document guide covers deployment sizing.
+Rebuild both images for saved guest chats and uploads. Flyway creates `erro_chat`
+in the existing database. Allow memory for two isolated parser processes per
+backend; the document guide covers deployment sizing. Compose permits HTTP guest
+cookies locally; production defaults to secure HTTPS cookies.
 
 [Railway setup](docs/railway.md) gives the complete steps and variables for the
 existing web service plus a new backend, PostgreSQL 18, and Redis. The Railway
@@ -114,11 +116,13 @@ End-to-end browser checks use `./scripts/verify-browser.sh` after
 `cd web && npm ci && npx playwright install chromium`. This creates an isolated
 local stack with a mock AI; see [verification details](docs/knowledge.md).
 
-For chat-memory frontend checks without Docker or AI credentials, run
-`npm run build && npm run test:chat-memory` from `web/` after installing Chromium.
-This starts and stops its own local preview and mocks only the chat endpoint.
+When Docker is unavailable, disposable native PostgreSQL checks are available:
+`./scripts/verify-database-local.sh` (JDK 25, local PostgreSQL binaries), then
+`./scripts/verify-browser-local.sh` (packaged backend, built frontend, Nginx,
+Node and Playwright Chromium). These start private fixtures and remove their own
+data. See [Guest chat verification](docs/guest-chats.md#verification-workflows)
+for environment overrides and the limits of native checks.
 
-For attachment UI checks, run `npm run test:attachments` from `web/`.
 After Maven packages the backend, run `python3 scripts/verify-document-worker.py`
 from the root to test the packaged worker and vision API against a local mock.
 Add `--pdf /path/to/project.pdf` to exercise a local PDF without sending it externally.

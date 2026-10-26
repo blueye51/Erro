@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { rememberMessage, sendMessage, type ChatReply } from './chat'
+import { useSavedChat } from './useSavedChat'
 import { AnswerDetails } from './AnswerDetails'
 import { Arrow } from './Brand'
 import { FILE_TYPES, useAttachments } from './attachments'
@@ -13,84 +13,46 @@ const starterPrompts = [
 ]
 
 export function Chat({ active }: { active: boolean }) {
-  const [draft, setDraft] = useState('')
-  const [messages, setMessages] = useState<
-    { id: number; role: 'user' | 'assistant'; text: string; answer?: ChatReply; filenames?: string[] }[]
-  >([])
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState('')
-  const sending = useRef(false)
-  const [problemContext, setProblemContext] = useState<string[]>([])
-  const [memoryNotice, setMemoryNotice] = useState('')
-  const nextId = useRef(0)
+  const saved = useSavedChat()
+  const { draft, setDraft, messages, pending, error, setError } = saved
   const messageList = useRef<HTMLElement>(null)
+  const olderScroll = useRef<{ height: number; top: number } | null>(null)
   const composer = useRef<HTMLTextAreaElement>(null)
   const picker = useRef<HTMLInputElement>(null)
-  const attachments = useAttachments()
+  const attachments = useAttachments(saved.chatId, saved.session?.csrfToken, saved.files)
   const [dragging, setDragging] = useState(false)
-
-  function newProblem() {
-    attachments.reset()
-    setProblemContext([]); setMemoryNotice(''); setMessages([]); setDraft(''); setError('')
-    composer.current?.focus({ preventScroll: true })
-  }
-
-  useEffect(() => {
-    const restored = (event: PageTransitionEvent) => { if (event.persisted) window.location.reload() }
-    window.addEventListener('pageshow', restored)
-    return () => window.removeEventListener('pageshow', restored)
-  }, [])
 
   useEffect(() => {
     const log = messageList.current
+    if (log && olderScroll.current) {
+      log.scrollTop = olderScroll.current.top + log.scrollHeight - olderScroll.current.height
+      olderScroll.current = null; return
+    }
     if (active) log?.scrollTo({ top: log.scrollHeight })
   }, [messages, pending, active])
 
   async function submitMessage() {
-    const text = draft.trim()
-    if (!text || sending.current || attachments.blocked) return
-    sending.current = true
-    setPending(true)
-    setError('')
-    const id = nextId.current++
-    setMessages((current) => [...current, { id, role: 'user', text,
-      filenames: attachments.items.filter(i => i.selected && i.state === 'READY').map(i => i.filename) }])
-    setDraft('')
-    try {
-      const answer = await sendMessage(text, problemContext, attachments.token.current, attachments.ids)
-      if (answer.contextReset) attachments.reset()
-      setProblemContext(rememberMessage(problemContext, text, answer.contextReset))
-      setMemoryNotice(answer.contextReset ? 'Chat memory restarted because the problem changed.' : '')
-      const replyId = nextId.current++
-      setMessages((current) => [
-        ...current,
-        { id: replyId, role: 'assistant', text: answer.reply, answer },
-      ])
-    } catch (failure) {
-      setMessages((current) => current.filter((message) => message.id !== id))
-      setDraft(text)
-      setError(
-        failure instanceof Error
-          ? failure.message
-          : 'Something went wrong. Please try again.',
-      )
-    } finally {
-      sending.current = false
-      setPending(false)
-      if (composer.current?.offsetParent) composer.current.focus({ preventScroll: true })
-    }
+    if (!attachments.blocked) await saved.send(attachments.ids)
   }
 
   return (
-    <div className={`chat-content ${messages.length ? 'has-messages' : 'is-empty'} ${dragging ? 'is-dragging' : ''}`}
+    <div className={`chat-content ${messages.length || pending ? 'has-messages' : 'is-empty'} ${dragging ? 'is-dragging' : ''}`}
       onDragOver={event => { if (event.dataTransfer.types.includes('Files')) { event.preventDefault(); if (!pending) setDragging(true) } }}
       onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragging(false) }}
       onDrop={event => { event.preventDefault(); setDragging(false); if (!pending) void attachments.add(Array.from(event.dataTransfer.files)) }}>
-      {(messages.length > 0 || attachments.items.length > 0) && <div className="problem-toolbar">
-        <div><p className="eyebrow">Electrical assistant · Estonia / EU</p><h1>Your project</h1></div>
-        <button className="problem-reset" disabled={pending} onClick={newProblem}><span aria-hidden="true">+</span> New problem</button>
-      </div>}
-      {messages.length > 0 ? (
+      <div className="saved-chat-toolbar">
+        <label>Guest chats<select aria-label="Saved chats" value={saved.chatId ?? ''} disabled={saved.loading}
+          onChange={event => void saved.select(event.target.value)}>
+          {!saved.chatId && <option value="">Loading chats…</option>}
+          {saved.chats.map(chat => <option key={chat.id} value={chat.id}>{chat.title}</option>)}
+        </select></label>
+        <button className="problem-reset" disabled={!saved.session || saved.loading} onClick={() => void saved.newChat()}>+ New chat</button>
+        <button className="guest-delete" disabled={!saved.session || saved.loading} onClick={() => void saved.removeChat()}>Delete chat</button>
+        <button className="guest-delete" disabled={!saved.session || saved.loading} onClick={() => void saved.erase()}>Delete all my data</button>
+        {saved.moreChats && <button className="guest-delete" onClick={() => void saved.more()}>Load more chats</button>}
+      </div>
+      {saved.loading && <p className="chat-status" role="status">Loading your saved chat…</p>}
+      {messages.length > 0 || pending ? (
         <section
           className="message-list"
           ref={messageList}
@@ -100,6 +62,11 @@ export function Chat({ active }: { active: boolean }) {
           aria-live="polite"
           aria-relevant="additions text"
         >
+          {saved.hasMore && <button className="load-earlier" disabled={saved.loadingOlder} onClick={() => {
+            const log = messageList.current
+            if (log) olderScroll.current = { height: log.scrollHeight, top: log.scrollTop }
+            void saved.older().then(loaded => { if (!loaded) olderScroll.current = null })
+          }}>{saved.loadingOlder ? 'Loading…' : 'Load earlier messages'}</button>}
           {messages.map((message) => (
             <article
               className={`message message-${message.role}`}
@@ -151,9 +118,8 @@ export function Chat({ active }: { active: boolean }) {
             </article>
           ))}
           {pending && (
-            <p className="reply-pending" role="status">
-              Thinking…
-            </p>
+            <><article className="message message-user"><h3 className="message-author">You</h3><div className="message-body"><p>{saved.pendingRequest?.message}</p></div></article>
+              <p className="reply-pending" role="status">Thinking… <button type="button" onClick={() => void saved.cancel()}>Cancel reply</button></p></>
           )}
         </section>
       ) : (
@@ -204,14 +170,14 @@ export function Chat({ active }: { active: boolean }) {
               void submitMessage()
             }
           }}
-          readOnly={pending}
+          readOnly={pending || saved.loading}
           maxLength={8000}
           aria-describedby="chat-status"
         />
         <div className="composer-toolbar">
           <input className="sr-only" ref={picker} type="file" multiple accept={FILE_TYPES} tabIndex={-1} aria-label="Attach project files"
             onChange={event => { void attachments.add(Array.from(event.target.files ?? [])); event.target.value = '' }} />
-          <button className="attach-button" type="button" disabled={pending || attachments.items.length >= 8} onClick={() => picker.current?.click()}>
+          <button className="attach-button" type="button" disabled={pending || saved.loading || !saved.chatId || attachments.items.length >= 8} onClick={() => picker.current?.click()}>
             <span aria-hidden="true">+</span> Attach files
           </button>
           <span className="composer-status">
@@ -222,7 +188,7 @@ export function Chat({ active }: { active: boolean }) {
           <button
             className="send-button"
             type="submit"
-            disabled={pending || attachments.blocked || !draft.trim()}
+            disabled={pending || saved.loading || !saved.chatId || attachments.blocked || !draft.trim()}
             aria-label="Send message"
           >
             <span>Send</span><Arrow />
@@ -230,20 +196,17 @@ export function Chat({ active }: { active: boolean }) {
         </div>
       </form>
       <p className="attachment-help">Drop files here · PDF, images, Word, Excel, CSV or text · 20 MiB each, up to 8 files.
-        {attachments.items.length > 0 && ' Selected files stay available for follow-ups. Use New problem for a different project.'}
-        {' '}Files are processed temporarily; relevant content is sent to the AI provider.</p>
+        {attachments.items.length > 0 && ' Selected files stay with this chat for follow-ups.'}
+        {' '}Extracted content is saved with the chat; relevant content is sent to the AI provider.</p>
+      {attachments.blocked && <p className="attachment-help" role="status">Selected files are processing or need attention. Deselect them to ask without them.</p>}
       {attachments.error && <p className="chat-error" role="alert">{attachments.error}</p>}
       {error && (
         <p className="chat-error" role="alert">
-          {error}
+          {error} {!saved.session && <button type="button" onClick={() => void saved.initialize(true)}>Retry</button>}
         </p>
       )}
-      {memoryNotice && <p className="chat-status" role="status">{memoryNotice}</p>}
       <p className="chat-status" id="chat-status">
-        {problemContext.length > 0
-          ? `Remembering ${problemContext.length} of your recent messages. `
-          : 'Remembers up to 8 of your recent messages. '}
-        New problem or refresh clears chat memory and attachments.
+        Chats are saved and linked to this browser. No sign-in needed. Use “Delete all my data” to start anew.
       </p>
       {messages.length === 0 && <div className="starter-prompts" aria-label="Ideas to get started">
         {starterPrompts.map(prompt => <button key={prompt.title} type="button" onClick={() => {

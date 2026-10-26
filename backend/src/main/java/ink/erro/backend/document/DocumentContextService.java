@@ -19,6 +19,10 @@ public class DocumentContextService {
     public Context retrieve(String token, List<String> ids, String question) {
         if (ids == null || ids.isEmpty()) return Context.empty();
         var files = store.read(token,ids);
+        return fromExtractions(files,question);
+    }
+    public Context fromExtractions(List<Extraction> files,String question) {
+        if(files.isEmpty()) return Context.empty();
         var all = files.stream().flatMap(f -> f.evidence().stream()).toList();
         var warnings = new LinkedHashSet<String>(); files.forEach(f -> warnings.addAll(f.warnings()));
         var terms = terms(question);

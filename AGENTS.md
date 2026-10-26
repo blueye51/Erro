@@ -6,16 +6,19 @@ E.R.R.O.'s founders, tentative direction, and current website requirements.
 The confirmed product is an Estonia/EU electrical equipment selection assistant
 with knowledge retrieval, citations, deterministic calculations/validation and
 protected source/catalog management. Read `docs/knowledge.md` for boundaries.
-Chat/problem context stays in page memory; only bounded prior user inputs may be
-sent with a follow-up. Do not add saved chats, visitor accounts, arbitrary URL
-fetching, file uploads, tools or purchasing without a new request. Knowledge and
-catalog data use Flyway-managed PostgreSQL tables in `erro_knowledge`. Credentials
+Guest identities, chats and extracted chat-document evidence persist in PostgreSQL
+under `erro_chat`, scoped to a secure browser cookie. Guests can delete all their
+data and start anew. Keep AI inputs bounded independently of stored history and
+never reuse generated ratings as verified technical inputs. Do not add visitor
+logins, arbitrary URL fetching, tools or purchasing without a new request.
+Knowledge and catalog data use Flyway-managed PostgreSQL tables in `erro_knowledge`. Credentials
 and the admin token belong only in backend configuration. Do not index unlicensed
 standards or treat scope metadata as full requirements.
 
 Run `npm run build` and `npm run lint` from `web/` for frontend changes. Check
 responsive layout, chat sending, loading/error states, reply formatting, and
-clearing messages on refresh when changing the interface.
+restoring saved messages/attachments after refresh and guest-data deletion when
+changing the interface.
 
 For backend or infrastructure changes, validate `docker compose config --quiet`,
 build the affected images, and verify the backend's startup connection checks

@@ -2,15 +2,18 @@
 
 The backend is a Spring Boot application with JDBC, Redis, and an AWS SDK S3
 client. It also serves the AI [chat API](chat.md), using Spring MVC and
-Tomcat on port 8080. Chat content is not stored. Knowledge/catalog data use Flyway-managed PostgreSQL tables; see [Electrical knowledge](knowledge.md).
+Tomcat on port 8080. Knowledge/catalog data use Flyway-managed `erro_knowledge`
+tables; anonymous guests, saved chats, messages and extracted document evidence
+use `erro_chat` in the same PostgreSQL database. See [Electrical knowledge](knowledge.md)
+and [Guest chats](guest-chats.md).
 
-[Temporary chat documents](documents.md) add bounded in-memory document evidence
-and isolated child JVMs for extraction/vision. They require ephemeral writable
-temporary storage, headless fonts (installed by the backend Dockerfile), and
-memory for up to two 256 MiB parser heaps plus the parent and native buffers.
-Start with a 2 GiB container budget and monitor actual loads. Use one backend
-replica or sticky routing; the temporary cache is not shared through Redis/S3.
-There are no new services, databases, volumes or migrations.
+[Chat documents](documents.md) use PostgreSQL jobs/evidence and isolated child
+JVMs for extraction/vision. They require ephemeral writable temporary storage,
+headless fonts (installed by the backend Dockerfile), and memory for up to two
+256 MiB parser heaps plus the parent and native buffers. Start with a 2 GiB
+container budget and monitor actual loads. Guest chat/file state is shared across
+replicas using database claims; no sticky routing, new service or volume is needed.
+Migration V4 creates the guest schema; originals are cleared after processing.
 
 ## Where things live
 
@@ -74,7 +77,8 @@ Maven installation is required for the Compose workflow.
 The backend waits for healthy PostgreSQL, Redis, and MinIO containers, then
 verifies a JDBC connection, Redis `PING`, and authenticated S3 `ListBuckets`.
 Look for `Infrastructure ready` in its logs. A failed connection aborts startup.
-These checks are read-only. Flyway separately creates the `erro_knowledge` application schema on startup.
+These checks are read-only. Flyway creates `erro_knowledge` and `erro_chat` tables
+on startup, with migration history in `erro_knowledge`.
 The embedded HTTP server keeps the backend running afterward.
 The checks happen once at startup, not as continuous monitoring.
 
@@ -111,7 +115,7 @@ database user's password.
 | --- | --- | --- |
 | Nginx website and chat proxy | http://localhost:5173 | None |
 | Vite frontend (optional `dev` profile) | http://localhost:5174 | None |
-| Backend | http://localhost:8080/api/chat (POST) | AI key configured on the server; no visitor login |
+| Backend | http://localhost:8080/api/guest (GET bootstrap), `/api/chats` | Private guest cookie/CSRF; no visitor login |
 | PostgreSQL | localhost:5432, database `erro` | `erro` / `erro-local-postgres` |
 | Redis | localhost:6379 | Password `erro-local-redis` |
 | MinIO S3 endpoint | http://localhost:9000 | `erro-local` / `erro-local-minio-secret` |
@@ -150,6 +154,9 @@ the backend's environment; the two sets of names are deliberately separate.
 
 Compose also passes `AI_ENDPOINT`, `AI_API_KEY`, `AI_MODEL`, `AI_REASONING_EFFORT`,
 `AI_MAX_OUTPUT_TOKENS`, `AI_TIMEOUT`, and `CHAT_ALLOWED_ORIGINS` to the backend.
+`CHAT_COOKIE_SECURE` defaults false in local Compose for HTTP and true in the
+backend for production HTTPS. `CHAT_GUEST_TTL` defaults to `365d`. See
+[Guest chat configuration](guest-chats.md#configuration-and-deployment).
 See the complete [chat configuration reference](chat.md#configuration).
 Compose also passes `DOCUMENTS_ENABLED` (true), `DOCUMENT_VISION_MODEL`
 (`deepseek-flash`), `DOCUMENT_TTL` (30m) and `DOCUMENT_MAX_PROBLEMS` (32).
@@ -177,7 +184,8 @@ JDBC uses a Hikari pool capped at five connections with a 10-second acquisition
 timeout. Redis connection and command timeouts are five seconds. The S3 client
 uses the URL connection HTTP client, a five-second connection timeout, a
 10-second socket and attempt timeout, and a 30-second total call timeout. SQL
-initialization and Redis repository discovery are disabled; Flyway manages the knowledge/catalog schema and JDBC repositories query it.
+initialization and Redis repository discovery are disabled; Flyway manages
+knowledge/catalog and guest chat tables, queried through JDBC repositories.
 
 ## Maven and host development
 
@@ -203,6 +211,7 @@ Configure these environment variables in the IDE or shell, adjusting them to
 match `.env` if customized. Compose's `.env` is not loaded automatically by Spring.
 
 ```sh
+export CHAT_COOKIE_SECURE=false
 export DATABASE_URL=jdbc:postgresql://localhost:5432/erro
 export DATABASE_USERNAME=erro
 export DATABASE_PASSWORD=erro-local-postgres
@@ -218,6 +227,10 @@ export AWS_EC2_METADATA_DISABLED=true
 cd backend
 ./mvnw spring-boot:run
 ```
+
+For disposable native database/browser verification when Docker is unavailable,
+see [Guest chat verification](guest-chats.md#verification-workflows). These
+fixtures do not replace Compose service startup checks.
 
 ## Switching to Amazon S3 later
 

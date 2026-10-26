@@ -5,12 +5,11 @@ Visitors can start typing immediately. This replaces the earlier founder-first
 homepage and collapsed AI corner, while retaining the cream/green palette, serif
 headings, brand mark and supplied contact email.
 
-The chat now accepts temporary file attachments by selection or drag-and-drop,
-with processing/error states, selection/removal and document citations. Files
-remain available for follow-ups in page memory and expire on the server. See
-[Temporary chat documents](documents.md) for usage, privacy and limitations.
-The page can grow for attachments and errors so the footer does not overlap the
-composer on mobile; the message list and attachment list scroll independently.
+The chat accepts attachments by selection or drag-and-drop, with processing/error
+states, selection/removal and citations. Anonymous guests and chats are saved in
+PostgreSQL, recognized through a private cookie, and restored after refresh. See
+[Guest chats](guest-chats.md) and [Chat documents](documents.md). The page grows
+for controls and errors so the footer does not overlap the mobile composer.
 
 ## Usage
 
@@ -22,17 +21,19 @@ composer on mobile; the message list and attachment list scroll independently.
   `eric.rand66@gmail.com` address and a `mailto:` button. The site does not send
   email or collect form submissions.
 - Top navigation and browser back/forward switch views. The same Chat component
-  stays mounted while hidden, preserving messages, draft and active problem
-  context. Requests can finish while viewing About us or Contact us without
+  stays mounted while hidden, preserving the selected chat and draft. Requests can finish while viewing About us or Contact us without
   stealing focus. Direct links work after refresh.
-- **New problem** clears messages, draft and active problem context. A full refresh
-  also clears them; no chat data enters local/session storage or cookies.
-- Short-term chat memory keeps up to eight successful user inputs (24,000
-  characters total) for follow-ups. The composer status shows the remembered
-  message count; automatic backend resets show a notice. Long follow-ups do not
-  lose memory simply because of their length. See [Chat memory](chat.md#short-term-chat-memory).
+- **Guest chats** selects saved conversations. **New chat** starts a separate
+  conversation without removing older ones. The selected chat ID stays in the
+  page URL and is restored on refresh, with its messages, documents and pending
+  reply. **Load earlier messages** retrieves older history.
+- **Delete chat** removes that conversation and its document evidence.
+  **Delete all my data** asks for confirmation, erases the guest's chats and
+  documents, and starts a new guest identity. Other open tabs clear their old
+  content. This browser is remembered by a cookie; there is no login.
 - Enter sends; Shift+Enter inserts a newline. Pending requests disable duplicate
-  sends. Errors restore the draft for retry. Replies retain safe Markdown and
+  sends. Pending replies survive refresh and can be cancelled. Errors restore
+  the draft for retry. Replies retain safe Markdown and
   expandable sources, calculations, assumptions, warnings and missing information.
 - **Knowledge management** remains available in the footer at `/#knowledge`, with
   backend token protection. Leaving that view unmounts its token state.
@@ -49,13 +50,15 @@ support customer project plans. This change prepares the entry experience and
 parts-list prompt, but introduces no stock, pricing, delivery or ordering API.
 The frontend does not display invented products, quotes or availability. Existing
 backend knowledge retrieval, technical validation and catalog candidates remain
-in use without changes to the chat API or Railway variables.
+in use through the saved guest chat API. See the guest guide for deployment settings.
 
 ## Components and copy
 
 - `web/src/App.tsx`: hash navigation, page titles, focus, header and footer.
-- `web/src/Chat.tsx`: existing chat flow, composer, starter prompts and active
-  problem context; reuses `chat.ts` and `AnswerDetails.tsx`.
+- `web/src/Chat.tsx`: guest/chat controls, composer, attachments and saved messages.
+- `web/src/useSavedChat.ts` and `guestChat.ts`: session, queue polling, pagination,
+  deletion and saved API access. `attachments.ts` manages saved chat files.
+- `web/src/chat.ts` and `AnswerDetails.tsx`: response types and structured details.
 - `web/src/InfoPages.tsx`: founder cards and contact view.
 - `web/src/Brand.tsx`: existing brand mark and arrow icons.
 - `web/src/App.css`: responsive layout and visual styling.
@@ -87,8 +90,10 @@ browser fixture, run `./scripts/verify-browser.sh` from the repository root afte
 installing Playwright Chromium as described in [Electrical knowledge](knowledge.md).
 It uses the production Nginx image, real backend and a mock AI provider.
 
-Rebuild/redeploy the existing web service for production. Backend configuration,
-database schema, domain and Railway variables need no changes for this UI update.
+Rebuild/redeploy web and backend for saved guest chats. Migration V4 creates
+`erro_chat`; production cookies require HTTPS. See [Guest deployment](guest-chats.md).
+The dated verification records below describe earlier versions. Guest persistence
+supersedes their refresh-clearing behavior; current results are in the guest guide.
 
 ## Verification — 2026-10-06
 

@@ -14,6 +14,7 @@ import ink.erro.backend.document.*;
 
 @Service
 public class ChatService {
+    public record Turn(String role,String content) {}
     public record ChatReply(String reply,String requestId,List<Source> sources,
         List<ElectricalCalculationService.Calculation> calculations,List<String> assumptions,List<String> warnings,
         List<String> missingInformation,List<ElectricalValidationService.Check> validations,List<Candidate> products,boolean contextReset,
@@ -34,12 +35,23 @@ public class ChatService {
         return reply(message,previous,null,List.of());
     }
     public ChatReply reply(String message,List<String> previous,String token,List<String> attachmentIds) {
-        String id=UUID.randomUUID().toString();
         var problem=problems.resolve(message.strip(),previous,token!=null);
         if(problem.reset() && token!=null) documentStore.delete(token);
         var documentContext=problem.reset() || attachmentIds==null || attachmentIds.isEmpty() ? DocumentModels.Context.empty() :
                 documents.retrieve(token,attachmentIds,problem.question());
+        return respond(message,problem,documentContext,List.of(),false);
+    }
+    public ChatReply replySaved(String message,List<String> previous,List<Turn> dialogue,List<DocumentModels.Extraction> files) {
+        var problem=problems.resolve(message.strip(),previous,!files.isEmpty());
+        var documentContext=problem.reset()?DocumentModels.Context.empty():documents.fromExtractions(files,problem.question());
+        return respond(message,problem,documentContext,problem.reset()?List.of():dialogue,true);
+    }
+    private ChatReply respond(String message,ProblemContextService.Problem problem,DocumentModels.Context documentContext,List<Turn> dialogue,boolean saved) {
+        String id=UUID.randomUUID().toString();
         var context=electrical.prepare(problem.question(),problem.assumptions(),DocumentContextService.searchHints(documentContext));
+        var input=saved?new ChatPrompt().build(message.strip(),problem.previousMessages(),dialogue,context,documentContext):null;
+        var allowedHits=input==null?context.retrieval().hits():input.hits();
+        var allowedDocuments=input==null?documentContext.excerpts():input.excerpts();
         LoggerFactory.getLogger(getClass()).info("chat request={} intents={} parameters={} queryHash={} retrievalMode={} evidence={} calculations={} validators={}",id,
                 context.intents(),context.parameters().values().entrySet().stream().collect(java.util.stream.Collectors.toMap(Map.Entry::getKey,e->e.getValue().value())),
                 fingerprint(context.retrievalQuery()),context.retrieval().mode(),context.retrieval().hits().stream().map(h->h.source().documentId()+":"+h.source().relevance()).toList(),
@@ -49,8 +61,8 @@ public class ChatService {
         if(!failures.isEmpty()) {
             answer="The stated combination is unsuitable under the stated conditions.\n\n"+String.join("\n\n",failures.stream().map(ElectricalValidationService.Check::explanation).toList());
         } else {
-            try { answer=ai.reply(json.writeValueAsString(Map.of("userQuestion",message.strip(),
-                    "previousUserMessages",problem.previousMessages(),"referenceData",context,"documentData",documentContext))); }
+            try { answer=ai.reply(input==null?json.writeValueAsString(Map.of("userQuestion",message.strip(),
+                    "previousUserMessages",problem.previousMessages(),"referenceData",context,"documentData",documentContext)):input.json()); }
             catch(AiException failure) {
                 LoggerFactory.getLogger(getClass()).warn("chat request={} providerErrorStatus={}",id,failure.status().value());
                 throw failure;
@@ -59,10 +71,11 @@ public class ChatService {
         if(failures.isEmpty() && !context.missingInformation().isEmpty()
                 && context.validations().stream().anyMatch(c->c.rule().equals("protection-system")))
             answer="There is not enough verified information to select protection safely. Load current alone does not determine a breaker rating.\n\n"+answer;
-        var cited=citations.map(answer,context.retrieval().hits());
-        var documentCited=citations.documents(cited.reply(),documentContext.excerpts());
+        var cited=citations.map(answer,allowedHits);
+        var documentCited=citations.documents(cited.reply(),allowedDocuments);
         var warnings=new ArrayList<>(context.warnings()); warnings.addAll(cited.warnings());
         warnings.addAll(documentContext.warnings()); warnings.addAll(documentCited.warnings());
+        if(input!=null && input.trimmed()) warnings.add("Some conversation/reference context was omitted for this answer. Your full chat remains saved.");
         var validations=new ArrayList<>(context.validations());
         var candidates=new ArrayList<>(context.products());
         documentContext.assessments().forEach(a->{

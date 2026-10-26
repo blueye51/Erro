@@ -12,9 +12,13 @@ admin ingestion/debugging, calculations, catalog validation and Railway rollout.
 [Chat](chat.md) covers the AI request flow, API contract, DeepSeek configuration,
 frontend behavior, deployment settings, and verification.
 
-[Temporary chat documents](documents.md) covers attachments, direct extraction,
-vision, retrieval/citations, scoped electrical checks, temporary processing,
+[Chat documents](documents.md) covers attachments, direct extraction,
+vision, retrieval/citations, scoped electrical checks, saved evidence and isolated temporary processing,
 resource limits, API/configuration and test workflows.
+
+[Guest chats](guest-chats.md) covers anonymous browser recognition, saved chats
+and document evidence, deletion, durable work queues, bounded model context,
+API/security, database migration and local verification workflows.
 
 [Homepage](homepage.md) covers the main chat workspace, starter prompts,
 About us/Contact us navigation, founder bios, email contact and verification.

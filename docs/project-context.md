@@ -31,7 +31,8 @@ Eric requested that visitors land directly in the chat, with About us and Contac
 us accessible through navigation. The chat is now the main workspace, with
 editable starter prompts for motor protection, component comparisons and parts
 planning. About/contact are separate hash views. Navigating between them keeps
-the conversation and draft in page memory; refresh and New problem clear it.
+the conversation and draft while navigating. Saved guest chats now survive refresh,
+as authorized below; unsent drafts remain in page memory.
 
 Eric intends to connect product information, quantities, shipping and prices so
 the assistant can help plan customer projects. This is the planned next stage,
@@ -40,35 +41,37 @@ frontend change adds no commerce endpoints and makes no availability promises.
 
 ## Current application
 
-On 2026-10-26 Eric explicitly authorized temporary file uploads and AI document
-analysis inside the existing electrical chat. PDFs, images, Word/Excel, CSV and
-text use direct extraction plus DeepSeek Flash vision, bounded retrieval/citations
-and scoped reuse of electrical checks and catalog data. Files belong to the active
-problem, never the permanent knowledge database. Refresh/New problem discard
-browser references; server evidence expires (30 minutes by default). No saved
-chats or accounts are introduced. See [Temporary chat documents](documents.md)
-for security, limits, deployment and verification. Live vision accuracy on real
-project documents has not yet been established.
+On 2026-10-26 Eric authorized file uploads and AI document analysis inside the
+electrical chat, then explicitly requested replacing temporary chat memory with
+full backend database persistence. Every visitor is a guest, with no login. A
+private browser cookie recognizes the guest; PostgreSQL saves separate chats,
+full messages/answer details and extracted attachment evidence. Refresh restores
+the selected chat, and queued work can finish while the page reloads. **New chat**
+starts a separate conversation. Guests can delete a chat or **Delete all my data**
+to erase all their chat/document data and rotate to a fresh guest identity.
+
+PDFs, images, Word/Excel, CSV and text use direct extraction plus vision, bounded
+retrieval/citations and scoped electrical checks/catalog data. Documents belong
+to their chat and never enter permanent knowledge automatically. Parser originals
+are discarded after processing; extracted evidence survives with the chat.
+See [Guest chats](guest-chats.md) and [Chat documents](documents.md). The supplied
+three-page Peakilp visual PDF was successfully extracted against the live vision
+provider before this persistence change; that is not a guarantee of drawing
+interpretation or exhaustive quantities.
 Readable visual content remains available with warnings when model-generated
 locations or structure are unreliable. These readings are marked incomplete,
 have no usable item quantities, and cannot establish exhaustive counts/DIN totals.
 
 - React/TypeScript/Vite in `web/`, Spring Boot/Java/Maven in `backend/`.
-- Existing `POST /api/chat` now runs intent/parameter extraction, bounded knowledge
-  retrieval, deterministic electrical checks, optional catalog retrieval and AI
-  generation. It retains `reply` and adds structured sources/calculations/warnings.
-- Messages and active problem context exist only in page memory. Up to eight
-  previous user inputs (24,000 characters total) may be supplied for follow-ups.
-  No assistant-generated ratings are reused as user input. New problem and refresh
-  clear context; obvious topic changes also reset it. There is no saved chat,
-  conversation database, visitor account system or browser storage.
-- On 2026-10-26 Eric requested short-term memory for the current chat. The model
-  now receives the latest question separately from chronological prior user
-  messages, with an explicit instruction to use those messages for follow-ups.
-  Long follow-ups and questions about related components no longer reset memory
-  solely due to length or a clearly linked component change. The UI shows the
-  remembered message count and announces backend-triggered resets. This does
-  not add stored chat history or include generated replies as technical input.
+- The website uses cookie-scoped `/api/guest` and `/api/chats` routes, durable
+  asynchronous generation and document queues, and PostgreSQL-owned history.
+  `ChatService` retains knowledge retrieval, deterministic checks and source details.
+  The earlier stateless `/api/chat` remains a compatibility endpoint.
+- Complete history is stored separately from model context. Follow-ups select
+  recent dialogue and relevant older user inputs within a 32,000-character
+  generation envelope. Generated ratings are never reused as deterministic
+  technical inputs. Topic changes reset inherited technical context without
+  deleting history. There are no visitor logins or cross-device recovery.
 - The homepage opens the electrical chat immediately. Chat/About us/Contact us
   navigation exposes founder names, draft bios and contact email in separate
   views. Eric requested permanent removal of both founder portraits on 2026-10-26:
@@ -78,8 +81,9 @@ have no usable item quantities, and cannot establish exhaustive counts/DIN total
 - The knowledge admin UI is at `/#knowledge`. A backend-only operator token gates
   every `/api/admin` endpoint. No existing authentication system was present.
 - Sources, chunks and product/catalog relationships persist in PostgreSQL under
-  the dedicated `erro_knowledge` schema using Flyway migrations. Chat content is
-  not persisted. Redis and S3 do not store chat or knowledge content.
+  the dedicated `erro_knowledge` schema using Flyway migrations. Migration V4 adds guest-owned
+  chats/documents in `erro_chat` in the same database. Redis and S3 do not store
+  chat or knowledge content.
 - A small starter library includes source/scope metadata and two attributed open
   theory summaries. Full copyrighted standards are not included. Owner-licensed
   standards/manufacturer content require explicit indexing and provider-processing
@@ -99,14 +103,14 @@ licensing, source ingestion, catalog DTOs, configuration and verification limits
 
 The foundation remains Java 25, Spring Boot, PostgreSQL 18, Redis and an AWS SDK
 S3 client under Docker Compose. Startup checks verify PostgreSQL, Redis and S3
-when enabled; Flyway now creates the knowledge/catalog schema first. The user's
+when enabled; Flyway creates knowledge/catalog and guest-chat tables first. The user's
 latest instruction confirms an existing Railway deployment with connected
 PostgreSQL. Its live configuration has not been independently inspected here.
 
 The final MinIO community release is local development only; Amazon S3 remains
 a future plan. Railway uses `S3_ENABLED=false` until storage is needed. No bucket
 creation or S3 uploads are added; chat documents use isolated temporary processing
-and bounded memory caching. See [Infrastructure](infrastructure.md) and
+with PostgreSQL-backed job/evidence storage. See [Infrastructure](infrastructure.md) and
 [Railway setup](railway.md).
 
 ## Repository and hosting

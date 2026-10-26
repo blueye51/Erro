@@ -17,6 +17,9 @@ public class ChatWebConfiguration implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
+        for(String path:List.of("/api/guest","/api/chats","/api/chats/**")) registry.addMapping(path)
+                .allowedOrigins(allowedOrigins.toArray(String[]::new)).allowedMethods("GET","POST","DELETE")
+                .allowedHeaders("Content-Type","X-CSRF-Token").allowCredentials(true);
         registry.addMapping("/api/chat")
                 .allowedOrigins(allowedOrigins.toArray(String[]::new))
                 .allowedMethods("POST")
