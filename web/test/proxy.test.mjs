@@ -34,7 +34,7 @@ const fixture = `
       res.writeHead(503);
       return res.end(JSON.stringify({ error: 'Provider temporarily unavailable.' }));
     }
-    if (!['/api/chat', '/api/echo', '/api/slow'].includes(path)) {
+    if (!['/api/chat', '/api/echo', '/api/slow', '/api/attachments/files'].includes(path)) {
       res.writeHead(404);
       return res.end(JSON.stringify({ error: 'Unknown API route.' }));
     }
@@ -140,6 +140,13 @@ test('allows AI replies that take longer than the wiki proxy timeout', async () 
   const response = await get('/api/slow', { method: 'POST' })
   assert.equal(response.status, 200)
   assert.match((await response.json()).reply, /formatted reply/)
+})
+
+test('raises the body limit only for file uploads', async () => {
+  const body = new Uint8Array(300 * 1024)
+  assert.equal((await get('/api/chat', { method: 'POST', body })).status, 413)
+  assert.equal((await get('/api/attachments/files', { method: 'POST', body })).status, 200)
+  assert.equal((await get('/api/attachments/files', { method: 'POST', body: new Uint8Array(22 * 1024 * 1024) })).status, 413)
 })
 
 test('refreshes private DNS after the API is replaced, without restarting Nginx', async () => {

@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestHeader;
 
 @RestController
 public class ChatController {
@@ -21,13 +22,16 @@ public class ChatController {
 
     @PostMapping(value = "/api/chat", consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<ChatService.ChatReply> chat(@Valid @RequestBody ChatMessage request) {
+    public ResponseEntity<ChatService.ChatReply> chat(@Valid @RequestBody ChatMessage request,
+            @RequestHeader(value="X-Problem-Token",required=false) String token) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
-                .body(chatService.reply(request.message(), request.problemContext()));
+                .body(chatService.reply(request.message(), request.problemContext(),token,request.attachmentIds()));
     }
 
     public record ChatMessage(@NotBlank @Size(max = 8000) String message,
-                              @Size(max = 8) List<@NotBlank @Size(max = 8000) String> problemContext) {
-        public ChatMessage(String message) { this(message, List.of()); }
+                              @Size(max = 8) List<@NotBlank @Size(max = 8000) String> problemContext,
+                              @Size(max = 8) List<@NotBlank @Size(max=36) String> attachmentIds) {
+        public ChatMessage(String message) { this(message, List.of(),List.of()); }
+        public ChatMessage(String message,List<String> context) { this(message,context,List.of()); }
     }
 }

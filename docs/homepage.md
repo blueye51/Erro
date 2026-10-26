@@ -5,6 +5,13 @@ Visitors can start typing immediately. This replaces the earlier founder-first
 homepage and collapsed AI corner, while retaining the cream/green palette, serif
 headings, brand mark and supplied contact email.
 
+The chat now accepts temporary file attachments by selection or drag-and-drop,
+with processing/error states, selection/removal and document citations. Files
+remain available for follow-ups in page memory and expire on the server. See
+[Temporary chat documents](documents.md) for usage, privacy and limitations.
+The page can grow for attachments and errors so the footer does not overlap the
+composer on mobile; the message list and attachment list scroll independently.
+
 ## Usage
 
 - **Chat** (the default view, also `/#home`) opens the main assistant workspace.

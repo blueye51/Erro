@@ -38,8 +38,13 @@ while the backend is unavailable, so visitors can still load the website.
 
 Both `/api` and `/api/*` are forwarded to the fixed `API_UPSTREAM`. Paths, query
 strings, methods, JSON bodies, and upstream status codes are preserved. API
-errors never fall through to `index.html`. Nginx uses a 256 KiB request body
-limit; the backend still validates the 8,000-character message limit.
+errors never fall through to `index.html`. Ordinary API requests use a 256 KiB
+body limit; the backend still validates the 8,000-character message limit.
+Only `/api/attachments/files` permits 21 MiB for multipart uploads, with 60-second
+send/read timeouts. Processing is asynchronous. `/api/attachments/problem` has
+a 1 KiB limit. POSTs on these two routes share a per-peer 20/minute rate limit
+with burst 8; GET polling and DELETE cleanup are excluded. The proxy tests include
+route-specific body-limit regressions. See [Documents](documents.md).
 
 The upstream address is resolved at request time using the container's private
 DNS, with a five-second cache. This allows web to start before backend and find
@@ -48,7 +53,7 @@ error until it is reachable again. Nginx does not retry requests or cache API
 replies, and proxy buffering is disabled.
 
 The proxy has a five-second connection timeout and a 100-second read timeout.
-The AI provider read timeout defaults to 60 seconds; the browser waits 65 seconds.
+The AI provider read timeout defaults to 60 seconds; the chat browser waits 90 seconds.
 The wiki's shorter 15-second timeout is deliberately not reused for AI replies.
 Forwarding preserves the incoming Host (including its port) and Origin headers.
 Keep `CHAT_ALLOWED_ORIGINS` set to the public web origins on the backend.

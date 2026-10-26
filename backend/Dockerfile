@@ -11,6 +11,7 @@ COPY src src
 RUN ./mvnw --batch-mode --no-transfer-progress verify
 
 FROM eclipse-temurin:25.0.4_7-jre-noble
+RUN apt-get update && apt-get install -y --no-install-recommends fontconfig fonts-dejavu-core fonts-liberation2 && rm -rf /var/lib/apt/lists/*
 RUN groupadd --gid 10001 erro && useradd --uid 10001 --gid erro --no-create-home erro
 WORKDIR /app
 COPY --from=build --chown=erro:erro /app/target/backend-0.0.1-SNAPSHOT.jar app.jar

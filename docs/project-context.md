@@ -40,6 +40,16 @@ frontend change adds no commerce endpoints and makes no availability promises.
 
 ## Current application
 
+On 2026-10-26 Eric explicitly authorized temporary file uploads and AI document
+analysis inside the existing electrical chat. PDFs, images, Word/Excel, CSV and
+text use direct extraction plus DeepSeek Flash vision, bounded retrieval/citations
+and scoped reuse of electrical checks and catalog data. Files belong to the active
+problem, never the permanent knowledge database. Refresh/New problem discard
+browser references; server evidence expires (30 minutes by default). No saved
+chats or accounts are introduced. See [Temporary chat documents](documents.md)
+for security, limits, deployment and verification. Live vision accuracy on real
+project documents has not yet been established.
+
 - React/TypeScript/Vite in `web/`, Spring Boot/Java/Maven in `backend/`.
 - Existing `POST /api/chat` now runs intent/parameter extraction, bounded knowledge
   retrieval, deterministic electrical checks, optional catalog retrieval and AI
@@ -70,7 +80,8 @@ frontend change adds no commerce endpoints and makes no availability promises.
 - A small starter library includes source/scope metadata and two attributed open
   theory summaries. Full copyrighted standards are not included. Owner-licensed
   standards/manufacturer content require explicit indexing and provider-processing
-  rights. Markdown/text ingestion is implemented; URL downloads and PDFs are not.
+  rights. Permanent knowledge ingestion remains Markdown/text only; temporary
+  chat uploads do not grant indexing rights or become knowledge sources.
 - DeepSeek remains the configured chat provider using the Responses API shape.
   AI secrets stay in backend environment configuration. Embeddings are optional
   and independently configured; keyword retrieval works without an embedding key.
@@ -91,7 +102,8 @@ PostgreSQL. Its live configuration has not been independently inspected here.
 
 The final MinIO community release is local development only; Amazon S3 remains
 a future plan. Railway uses `S3_ENABLED=false` until storage is needed. No bucket
-creation or uploads are added. See [Infrastructure](infrastructure.md) and
+creation or S3 uploads are added; chat documents use isolated temporary processing
+and bounded memory caching. See [Infrastructure](infrastructure.md) and
 [Railway setup](railway.md).
 
 ## Repository and hosting
@@ -122,7 +134,8 @@ Read this context and [Electrical knowledge](knowledge.md) before extending the
 assistant. Keep source authority, law/standards, manufacturer specifications,
 calculation results and generated explanation distinct. Expand the curated corpus
 and tested extraction rules deliberately. Saved chats, visitor accounts, tools,
-PDF/URL import and purchasing are not implemented and need explicit future scope.
+permanent PDF/URL knowledge import and purchasing need explicit future scope.
+Temporary document analysis is now authorized and implemented in the active chat.
 
 Eric requires all new work to be documented in `docs/` as part of the change.
 Keep setup, configuration, workflows, decisions and verification notes current;

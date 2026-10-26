@@ -4,6 +4,14 @@ The backend is a Spring Boot application with JDBC, Redis, and an AWS SDK S3
 client. It also serves the AI [chat API](chat.md), using Spring MVC and
 Tomcat on port 8080. Chat content is not stored. Knowledge/catalog data use Flyway-managed PostgreSQL tables; see [Electrical knowledge](knowledge.md).
 
+[Temporary chat documents](documents.md) add bounded in-memory document evidence
+and isolated child JVMs for extraction/vision. They require ephemeral writable
+temporary storage, headless fonts (installed by the backend Dockerfile), and
+memory for up to two 256 MiB parser heaps plus the parent and native buffers.
+Start with a 2 GiB container budget and monitor actual loads. Use one backend
+replica or sticky routing; the temporary cache is not shared through Redis/S3.
+There are no new services, databases, volumes or migrations.
+
 ## Where things live
 
 | File or directory | Purpose |
@@ -143,6 +151,10 @@ the backend's environment; the two sets of names are deliberately separate.
 Compose also passes `AI_ENDPOINT`, `AI_API_KEY`, `AI_MODEL`, `AI_REASONING_EFFORT`,
 `AI_MAX_OUTPUT_TOKENS`, `AI_TIMEOUT`, and `CHAT_ALLOWED_ORIGINS` to the backend.
 See the complete [chat configuration reference](chat.md#configuration).
+Compose also passes `DOCUMENTS_ENABLED` (true), `DOCUMENT_VISION_MODEL`
+(`deepseek-flash`), `DOCUMENT_TTL` (30m) and `DOCUMENT_MAX_PROBLEMS` (32).
+See the [document configuration reference](documents.md#configuration-and-deployment)
+for ranges, processing/resource limits and proxy behavior.
 
 Backend-only settings below must be supplied to the Java process or added to
 the backend's Compose `environment` section. Putting an arbitrary backend setting

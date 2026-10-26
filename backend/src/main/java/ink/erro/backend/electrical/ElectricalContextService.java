@@ -26,11 +26,15 @@ public class ElectricalContextService {
         this.intents=intents; this.extractor=extractor; this.calculations=calculations; this.validation=validation; this.retrieval=retrieval; this.products=products; this.properties=properties;
     }
     public Context prepare(String question,List<String> contextAssumptions) {
-        var categories=intents.detect(question); var parameters=extractor.extract(question);
-        String query=intents.expand(question,categories);
+        return prepare(question,contextAssumptions,"");
+    }
+    public Context prepare(String question,List<String> contextAssumptions,String documentHints) {
+        var categories=intents.detect(question+"\n"+documentHints); var parameters=extractor.extract(question);
+        String query=intents.expand(question+"\n"+documentHints,categories);
         var evidence=categories.isEmpty()?new Retrieval(List.of(),List.of(),"NOT_NEEDED"):
                 retrieval.retrieve(query,parameters.standards(),parameters.jurisdiction(),parameters.manufacturer());
-        var assessment=validation.assess(question,parameters,categories);
+        // File labels alone must not turn an inventory question into a global protection-selection check.
+        var assessment=validation.assess(question,parameters,!documentHints.isBlank() && parameters.values().isEmpty() ? Set.of() : categories);
         var warnings=new ArrayList<>(assessment.warnings()); warnings.addAll(evidence.warnings());
         List<ElectricalCalculationService.Calculation> computed;
         try { computed=calculations.applicable(parameters,categories); }

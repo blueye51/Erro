@@ -17,12 +17,16 @@ public class ProblemContextService {
     private final ElectricalIntentService intents;
     public ProblemContextService(ElectricalIntentService intents) { this.intents=intents; }
     public Problem resolve(String message,List<String> previous) {
+        return resolve(message,previous,false);
+    }
+    public Problem resolve(String message,List<String> previous,boolean hasDocuments) {
+        if(hasDocuments && NEW_PROBLEM.matcher(message.strip()).find()) return new Problem(message,true,List.of(),List.of());
         if(previous==null || previous.isEmpty()) return new Problem(message,false,List.of(),List.of());
         if(previous.stream().mapToInt(String::length).sum()>24000) throw new IllegalArgumentException("Problem context is too long; start a new problem.");
         String last=String.join("\n",previous);
         Set<ElectricalIntentService.Category> old = equipment(intents.detect(last)), current=equipment(intents.detect(message));
         boolean reset=NEW_PROBLEM.matcher(message.strip()).find()
-                || (!CONTINUATION.matcher(message.strip()).find() && !current.isEmpty()
+                || (!hasDocuments && !CONTINUATION.matcher(message.strip()).find() && !current.isEmpty()
                     && !old.isEmpty() && Collections.disjoint(old,current));
         if(reset) return new Problem(message,true,List.of("Earlier problem parameters were cleared because the equipment/topic changed."),List.of());
         return new Problem(last+"\nFollow-up: "+message,false,

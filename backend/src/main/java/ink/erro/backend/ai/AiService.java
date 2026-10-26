@@ -6,6 +6,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.List;
 
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.http.HttpStatus;
@@ -41,17 +42,30 @@ public class AiService {
     }
 
     public String reply(String message) {
+        return generate(properties.model(), message, SYSTEM_INSTRUCTION, properties.maxOutputTokens(), false);
+    }
+
+    /** Inline images only: never upload provider files, fetch URLs or create conversations. */
+    public String analyzeImage(String model, String instructions, String prompt, byte[] png) {
+        var content = List.of(Map.of("type", "input_text", "text", prompt),
+                Map.of("type", "input_image", "image_url", "data:image/png;base64," +
+                        java.util.Base64.getEncoder().encodeToString(png), "detail", "original"));
+        return generate(model, List.of(Map.of("role", "user", "content", content)), instructions, 8192, true);
+    }
+
+    private String generate(String model, Object input, String instructions, int outputTokens, boolean json) {
         if (properties.apiKey() == null || properties.apiKey().isBlank()
-                || properties.model() == null || properties.model().isBlank()) {
+                || model == null || model.isBlank()) {
             throw new AiException(HttpStatus.SERVICE_UNAVAILABLE, "AI chat is not configured yet.");
         }
 
         var request = new LinkedHashMap<String, Object>();
-        request.put("model", properties.model());
-        request.put("input", message);
-        request.put("instructions", SYSTEM_INSTRUCTION);
+        request.put("model", model);
+        request.put("input", input);
+        request.put("instructions", instructions);
         request.put("store", false);
-        request.put("max_output_tokens", properties.maxOutputTokens());
+        request.put("max_output_tokens", outputTokens);
+        if (json) request.put("text", Map.of("format", Map.of("type", "json_object")));
         if (properties.reasoningEffort() != null && !properties.reasoningEffort().isBlank()) {
             request.put("reasoning", Map.of("effort", properties.reasoningEffort().strip()));
         }

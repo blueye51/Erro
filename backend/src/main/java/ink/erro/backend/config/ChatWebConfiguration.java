@@ -20,7 +20,12 @@ public class ChatWebConfiguration implements WebMvcConfigurer {
         registry.addMapping("/api/chat")
                 .allowedOrigins(allowedOrigins.toArray(String[]::new))
                 .allowedMethods("POST")
-                .allowedHeaders("Content-Type")
+                .allowedHeaders("Content-Type","X-Problem-Token")
+                .allowCredentials(false);
+        registry.addMapping("/api/attachments/**")
+                .allowedOrigins(allowedOrigins.toArray(String[]::new))
+                .allowedMethods("GET","POST","DELETE")
+                .allowedHeaders("Content-Type","X-Problem-Token")
                 .allowCredentials(false);
     }
 }

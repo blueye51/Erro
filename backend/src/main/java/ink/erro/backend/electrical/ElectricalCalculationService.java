@@ -11,6 +11,18 @@ public class ElectricalCalculationService {
     private static final BigDecimal SQRT_THREE = BigDecimal.valueOf(3).sqrt(PRECISION);
     public record Calculation(String name, BigDecimal value, String unit, String formula,
                               Map<String,BigDecimal> inputs, List<String> assumptions) {}
+    public Calculation dinModules(String filename,List<BigDecimal> quantities,List<BigDecimal> modules) {
+        if (quantities.size()!=modules.size() || quantities.isEmpty()) throw new IllegalArgumentException("DIN inputs are incomplete.");
+        BigDecimal total=BigDecimal.ZERO; var inputs=new LinkedHashMap<String,BigDecimal>();
+        for(int i=0;i<quantities.size();i++) {
+            if(quantities.get(i).signum()<0 || modules.get(i).signum()<0) throw new IllegalArgumentException("DIN inputs cannot be negative.");
+            total=total.add(quantities.get(i).multiply(modules.get(i),PRECISION));
+            inputs.put("row_"+(i+1)+"_quantity",quantities.get(i)); inputs.put("row_"+(i+1)+"_modulesEach",modules.get(i));
+        }
+        return result(filename+": listed DIN module subtotal",total,"DIN modules","Σ quantity × documented modules per device",inputs,
+                List.of("Uses explicitly listed widths only. Confirm manufacturer specifications; spare space, terminals, ventilation and installation allowances are not included.",
+                        "A subtotal for this file, not a sum across drawings/specifications or different projects."));
+    }
     public Calculation ohmsVoltage(BigDecimal current, BigDecimal resistance) {
         positive(current,resistance);
         return result("Ohm's law",current.multiply(resistance,PRECISION),"V","V = I × R",Map.of("I_A",current,"R_ohm",resistance),List.of("Ohmic resistance at the stated operating conditions."));

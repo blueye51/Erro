@@ -5,6 +5,17 @@ is four services: `web`, `backend`, `Postgres`, and `Redis`. These names are use
 exactly in the variable references below; adjust references if services have
 different names. MinIO stays local. Amazon S3 can be connected later.
 
+Temporary chat attachments require rebuilding **both backend and web**. Keep the
+backend private and `S3_ENABLED=false`; no bucket, volume or migration is needed.
+Use one backend replica (or sticky routing), ephemeral writable `/tmp`, and RAM
+for two isolated parser JVMs; start with a 2 GiB container budget. Defaults are
+`DOCUMENTS_ENABLED=true`, `DOCUMENT_VISION_MODEL=deepseek-flash`,
+`DOCUMENT_TTL=30m`, `DOCUMENT_MAX_PROBLEMS=32`. Vision reuses backend `AI_API_KEY`
+and `AI_ENDPOINT`. The backend image includes fonts, and the web image scopes
+larger upload limits to the attachment route. Review per-peer upload throttling
+behind Railway's edge proxy. See [Documents](documents.md) for deployment limits,
+verification gaps and operational details.
+
 This guide records the required deployment configuration. No Railway resources
 have been created or inspected from this workspace. The dashboard labels below
 follow Railway's documentation checked on 2026-10-04; the existing-deployment

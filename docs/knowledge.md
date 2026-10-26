@@ -165,9 +165,11 @@ Larger works should be imported as separate meaningful sections with section
 paths/titles and edition metadata.
 
 URL fields are validated HTTP(S) **citation links only**, never fetched. This
-avoids SSRF and local filesystem access. PDF parsing, OCR, file upload and remote
-URL extraction are extension points, not implemented features. Convert legally
-available documents to reviewed Markdown/text first. Tables larger than a chunk
+avoids SSRF and local filesystem access. Permanent knowledge ingestion still
+accepts reviewed Markdown/text, not PDF or remote URL extraction. Temporary
+[chat document analysis](documents.md) now supports uploads separately; none
+are automatically added to the knowledge database. Convert legally available
+knowledge sources to reviewed Markdown/text first. Tables larger than a chunk
 need manual review because repeated table headers are not synthesized.
 
 SHA-256 plus source URL and version prevents duplicate imports. New content at
@@ -394,7 +396,7 @@ Railway resources have not been changed or independently inspected. A live
 DeepSeek answer and a real embedding account have not been tested. Inspect the
 production database role/extension availability, deploy the reviewed migrations,
 configure the admin token and verify actual citations after deployment. Semantic
-conflict detection, exhaustive extraction of every proposed parameter, URL/PDF
-extraction/OCR, ANN indexing for large corpora, and a populated manufacturer
+conflict detection, exhaustive extraction of every proposed parameter, permanent
+URL/PDF knowledge ingestion, ANN indexing for large corpora, and a populated manufacturer
 catalog remain future work. The parser is deliberately conservative; the tested
 rules do not establish the engineering correctness of every possible question.

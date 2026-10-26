@@ -14,6 +14,7 @@ export type ChatReply = {
   assumptions: string[]; warnings: string[]; missingInformation: string[]
   validations: Check[]; products: { id: string; specifications: Record<string, unknown>; checks: Check[] }[]
   contextReset: boolean
+  documentSources: { id: string; filename: string; location: string; method: string }[]
 }
 export const MAX_CONTEXT_MESSAGES = 8
 export const MAX_CONTEXT_CHARS = 24000
@@ -25,12 +26,12 @@ export function rememberMessage(previous: string[], message: string, reset = fal
   return recent
 }
 
-export async function sendMessage(message: string, problemContext: string[] = []): Promise<ChatReply> {
+export async function sendMessage(message: string, problemContext: string[] = [], token?: string | null, attachmentIds: string[] = []): Promise<ChatReply> {
   let response: Response
   try {
     response = await fetch('/api/chat', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, problemContext }),
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { 'X-Problem-Token': token } : {}) },
+      body: JSON.stringify({ message, problemContext, ...(attachmentIds.length ? { attachmentIds } : {}) }),
       signal: AbortSignal.timeout(90_000), credentials: 'omit',
     })
   } catch (error) {
@@ -47,5 +48,5 @@ export async function sendMessage(message: string, problemContext: string[] = []
       || typeof data.reply !== 'string' || !data.reply.trim()) throw new Error('The chat service returned an empty reply.')
   // Accept older backend replies during rolling deployment.
   return { sources: [], calculations: [], assumptions: [], warnings: [], missingInformation: [],
-    validations: [], products: [], contextReset: false, ...data } as ChatReply
+    validations: [], products: [], contextReset: false, documentSources: [], ...data } as ChatReply
 }

@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm'
 import { rememberMessage, sendMessage, type ChatReply } from './chat'
 import { AnswerDetails } from './AnswerDetails'
 import { Arrow } from './Brand'
+import { FILE_TYPES, useAttachments } from './attachments'
 
 const starterPrompts = [
   { title: 'Protect a motor', description: 'Work through the protection requirements.', message: 'I have a 400 V three-phase 7.5 kW motor and need protection for it. What information do we need to select the components?' },
@@ -14,7 +15,7 @@ const starterPrompts = [
 export function Chat({ active }: { active: boolean }) {
   const [draft, setDraft] = useState('')
   const [messages, setMessages] = useState<
-    { id: number; role: 'user' | 'assistant'; text: string; answer?: ChatReply }[]
+    { id: number; role: 'user' | 'assistant'; text: string; answer?: ChatReply; filenames?: string[] }[]
   >([])
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
@@ -24,6 +25,21 @@ export function Chat({ active }: { active: boolean }) {
   const nextId = useRef(0)
   const messageList = useRef<HTMLElement>(null)
   const composer = useRef<HTMLTextAreaElement>(null)
+  const picker = useRef<HTMLInputElement>(null)
+  const attachments = useAttachments()
+  const [dragging, setDragging] = useState(false)
+
+  function newProblem() {
+    attachments.reset()
+    setProblemContext([]); setMemoryNotice(''); setMessages([]); setDraft(''); setError('')
+    composer.current?.focus({ preventScroll: true })
+  }
+
+  useEffect(() => {
+    const restored = (event: PageTransitionEvent) => { if (event.persisted) window.location.reload() }
+    window.addEventListener('pageshow', restored)
+    return () => window.removeEventListener('pageshow', restored)
+  }, [])
 
   useEffect(() => {
     const log = messageList.current
@@ -32,15 +48,17 @@ export function Chat({ active }: { active: boolean }) {
 
   async function submitMessage() {
     const text = draft.trim()
-    if (!text || sending.current) return
+    if (!text || sending.current || attachments.blocked) return
     sending.current = true
     setPending(true)
     setError('')
     const id = nextId.current++
-    setMessages((current) => [...current, { id, role: 'user', text }])
+    setMessages((current) => [...current, { id, role: 'user', text,
+      filenames: attachments.items.filter(i => i.selected && i.state === 'READY').map(i => i.filename) }])
     setDraft('')
     try {
-      const answer = await sendMessage(text, problemContext)
+      const answer = await sendMessage(text, problemContext, attachments.token.current, attachments.ids)
+      if (answer.contextReset) attachments.reset()
       setProblemContext(rememberMessage(problemContext, text, answer.contextReset))
       setMemoryNotice(answer.contextReset ? 'Chat memory restarted because the problem changed.' : '')
       const replyId = nextId.current++
@@ -64,17 +82,13 @@ export function Chat({ active }: { active: boolean }) {
   }
 
   return (
-    <div className={`chat-content ${messages.length ? 'has-messages' : 'is-empty'}`}>
-      {messages.length > 0 && <div className="problem-toolbar">
+    <div className={`chat-content ${messages.length ? 'has-messages' : 'is-empty'} ${dragging ? 'is-dragging' : ''}`}
+      onDragOver={event => { if (event.dataTransfer.types.includes('Files')) { event.preventDefault(); if (!pending) setDragging(true) } }}
+      onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragging(false) }}
+      onDrop={event => { event.preventDefault(); setDragging(false); if (!pending) void attachments.add(Array.from(event.dataTransfer.files)) }}>
+      {(messages.length > 0 || attachments.items.length > 0) && <div className="problem-toolbar">
         <div><p className="eyebrow">Electrical assistant · Estonia / EU</p><h1>Your project</h1></div>
-        <button className="problem-reset" disabled={pending} onClick={() => {
-          setProblemContext([])
-          setMemoryNotice('')
-          setMessages([])
-          setDraft('')
-          setError('')
-          composer.current?.focus({ preventScroll: true })
-        }}><span aria-hidden="true">+</span> New problem</button>
+        <button className="problem-reset" disabled={pending} onClick={newProblem}><span aria-hidden="true">+</span> New problem</button>
       </div>}
       {messages.length > 0 ? (
         <section
@@ -96,7 +110,7 @@ export function Chat({ active }: { active: boolean }) {
               </h3>
               <div className="message-body">
                 {message.role === 'user' ? (
-                  <p>{message.text}</p>
+                  <><p>{message.text}</p>{!!message.filenames?.length && <p className="message-files">Files: {message.filenames.join(', ')}</p>}</>
                 ) : (
                   <Markdown
                     skipHtml
@@ -159,6 +173,17 @@ export function Chat({ active }: { active: boolean }) {
           void submitMessage()
         }}
       >
+        {attachments.items.length > 0 && <ul className="attachment-list" aria-label="Project attachments">
+          {attachments.items.map(item => <li key={item.key} className={`attachment attachment-${item.state.toLowerCase()}`}>
+            <label className="attachment-selection"><input type="checkbox" checked={item.selected} disabled={pending}
+              onChange={() => attachments.select(item.key)} aria-label={`Use ${item.filename} in questions`} />
+              <span className="attachment-name">{item.filename}</span></label>
+            <button type="button" className="attachment-remove" disabled={pending || item.state === 'UPLOADING'}
+              onClick={() => void attachments.remove(item.key)} aria-label={`Remove ${item.filename}`}>×</button>
+            <span className="attachment-progress" role="status">{item.error || item.progress}</span>
+            {item.warnings.length > 0 && <details className="attachment-notes"><summary>Extraction notes</summary><ul>{item.warnings.map(w => <li key={w}>{w}</li>)}</ul></details>}
+          </li>)}
+        </ul>}
         <label className="sr-only" htmlFor="message">
           Message E.R.R.O. AI
         </label>
@@ -184,6 +209,11 @@ export function Chat({ active }: { active: boolean }) {
           aria-describedby="chat-status"
         />
         <div className="composer-toolbar">
+          <input className="sr-only" ref={picker} type="file" multiple accept={FILE_TYPES} tabIndex={-1} aria-label="Attach project files"
+            onChange={event => { void attachments.add(Array.from(event.target.files ?? [])); event.target.value = '' }} />
+          <button className="attach-button" type="button" disabled={pending || attachments.items.length >= 8} onClick={() => picker.current?.click()}>
+            <span aria-hidden="true">+</span> Attach files
+          </button>
           <span className="composer-status">
             {pending
               ? 'Waiting for a reply…'
@@ -192,13 +222,17 @@ export function Chat({ active }: { active: boolean }) {
           <button
             className="send-button"
             type="submit"
-            disabled={pending || !draft.trim()}
+            disabled={pending || attachments.blocked || !draft.trim()}
             aria-label="Send message"
           >
             <span>Send</span><Arrow />
           </button>
         </div>
       </form>
+      <p className="attachment-help">Drop files here · PDF, images, Word, Excel, CSV or text · 20 MiB each, up to 8 files.
+        {attachments.items.length > 0 && ' Selected files stay available for follow-ups. Use New problem for a different project.'}
+        {' '}Files are processed temporarily; relevant content is sent to the AI provider.</p>
+      {attachments.error && <p className="chat-error" role="alert">{attachments.error}</p>}
       {error && (
         <p className="chat-error" role="alert">
           {error}
@@ -209,7 +243,7 @@ export function Chat({ active }: { active: boolean }) {
         {problemContext.length > 0
           ? `Remembering ${problemContext.length} of your recent messages. `
           : 'Remembers up to 8 of your recent messages. '}
-        New problem or refresh clears chat memory.
+        New problem or refresh clears chat memory and attachments.
       </p>
       {messages.length === 0 && <div className="starter-prompts" aria-label="Ideas to get started">
         {starterPrompts.map(prompt => <button key={prompt.title} type="button" onClick={() => {

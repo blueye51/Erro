@@ -1,4 +1,9 @@
 spring:
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 21MB
+      file-size-threshold: 0
   application:
     name: erro-backend
   datasource:
@@ -64,3 +69,9 @@ knowledge:
   embedding-api-key: ${EMBEDDING_API_KEY:}
   embedding-model: ${EMBEDDING_MODEL:}
   embedding-dimensions: ${EMBEDDING_DIMENSIONS:1536}
+
+documents:
+  enabled: ${DOCUMENTS_ENABLED:true}
+  vision-model: ${DOCUMENT_VISION_MODEL:deepseek-flash}
+  ttl: ${DOCUMENT_TTL:30m}
+  max-problems: ${DOCUMENT_MAX_PROBLEMS:32}

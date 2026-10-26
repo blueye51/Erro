@@ -6,6 +6,10 @@ function Notes({ title, items }: { title: string; items: string[] }) {
 }
 export function AnswerDetails({ answer }: { answer: ChatReply }) {
   return <div className="answer-details">
+    {answer.documentSources?.length > 0 && <details className="answer-detail"><summary>Document sources ({answer.documentSources.length})</summary>
+      <ol>{answer.documentSources.map(source => <li key={source.id}><strong>{source.filename}</strong>
+        <p>{source.location} · {source.method === 'VISION' ? 'Visual extraction — verify against original' : 'Direct extraction'}</p>
+      </li>)}</ol></details>}
     {answer.validations.some(c => c.status === 'FAIL') && <p className="validation-failure" role="note">A stated electrical requirement failed validation. See checks below.</p>}
     {answer.sources.length > 0 && <details className="answer-detail"><summary>Sources ({answer.sources.length})</summary>
       <ol>{answer.sources.map(source => <li key={source.id}>

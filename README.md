@@ -7,6 +7,10 @@ applicable deterministic checks/calculations and returns sources and missing dat
 Up to eight recent user messages provide short-term memory for follow-ups;
 refresh or **New problem** clears it. The chat shows its remembered message count.
 Knowledge and catalog data use PostgreSQL; chat content is not saved.
+Attach PDFs, images, Word/Excel, CSV or text directly in chat and ask follow-up
+questions about them. Documents are temporary, scoped to the active problem,
+and cleared on New problem/refresh with server expiration as a fallback.
+See [Temporary chat documents](docs/documents.md) for limits and accuracy boundaries.
 
 Read [Project context](docs/project-context.md) and [Electrical knowledge](docs/knowledge.md)
 for architecture, licensing, source management, product imports and verification.
@@ -49,6 +53,10 @@ run `docker compose --profile dev up -d web-dev` and open <http://localhost:5174
 tests, and the request/reply flow. [Web proxy](docs/web-proxy.md) covers Nginx,
 runtime `API_UPSTREAM` configuration, and proxy tests. Without a
 provider key, the stack still starts and chat reports that it is not configured.
+Text extraction works without a key; images and scanned/drawing PDFs require
+the backend AI configuration and `DOCUMENT_VISION_MODEL=deepseek-flash` (default).
+Rebuild both images for uploads. Use one backend replica and allow memory for
+two isolated parser processes; the document guide covers deployment sizing.
 
 [Railway setup](docs/railway.md) gives the complete steps and variables for the
 existing web service plus a new backend, PostgreSQL 18, and Redis. The Railway
@@ -109,3 +117,7 @@ local stack with a mock AI; see [verification details](docs/knowledge.md).
 For chat-memory frontend checks without Docker or AI credentials, run
 `npm run build && npm run test:chat-memory` from `web/` after installing Chromium.
 This starts and stops its own local preview and mocks only the chat endpoint.
+
+For attachment UI checks, run `npm run test:attachments` from `web/`.
+After Maven packages the backend, run `python3 scripts/verify-document-worker.py`
+from the root to test the packaged worker and vision API against a local mock.

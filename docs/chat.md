@@ -15,9 +15,14 @@ optional, up to eight prior user inputs and 24,000 characters total. It is never
 stored server-side. The UI keeps it only in memory and clears it with New problem
 or refresh. Prior assistant replies are not sent as technical inputs.
 
+Document questions also send optional `attachmentIds` (at most eight distinct
+file IDs) and the `X-Problem-Token` header from the attachment workflow.
+Omitted IDs preserve ordinary chat behavior. Upload endpoints, processing and
+expiry are documented in [Temporary chat documents](documents.md).
+
 Successful responses contain `reply`, `requestId`, `sources`, `calculations`,
 `assumptions`, `warnings`, `missingInformation`, `validations`, `products` and
-`contextReset`. Source IDs are mapped from actual retrieved chunks. The frontend
+`contextReset`, plus `documentSources` for cited uploaded excerpts. Source IDs are mapped from actual retrieved chunks. The frontend
 renders Markdown safely and places engineering details in expandable sections.
 It opens directly on the homepage. About us/Contact us navigation preserves the
 current draft and conversation; browser refresh still clears them. Starter prompts
@@ -32,7 +37,9 @@ order through the existing `problemContext` field. The oldest messages are dropp
 when either limit is reached. Failed or pending sends are not added to memory,
 so retrying does not duplicate them. Navigation to About us or Contact us preserves
 memory in the current page; New problem, a full refresh, or closing the page clears
-it. There is no timer, cross-tab memory, saved history or browser/server storage.
+it. There is no timer or server storage for user messages and no saved history or
+cross-tab memory. Uploaded document evidence separately uses an expiring backend
+memory cache; it is not chat history.
 
 The UI displays the number of remembered user messages and a notice when the
 backend resets context. The backend still resets for explicit new-problem
@@ -40,6 +47,8 @@ requests and clearly separate equipment questions. A follow-up longer than 500
 characters no longer causes a reset on its own. Explicit continuations such as
 “What enclosure would work for it?” retain the current problem. Topic detection
 remains a limited heuristic; use New problem when changing equipment/conditions.
+With an active document workspace, equipment category changes retain the files
+and prior inputs; explicit new-problem requests still clear both.
 
 For generation, the provider's JSON input separates `userQuestion` (the latest
 message) from `previousUserMessages` (accepted earlier user inputs). The system
@@ -50,9 +59,13 @@ shape. Earlier assistant replies are not sent back as user evidence or assumed
 to be verified specifications; questions requiring an unavailable earlier answer
 may need the visitor to restate the relevant detail. The provider still receives
 `store: false` and no conversation/previous-response IDs.
+Selected files additionally supply bounded `documentData`: located excerpts,
+uncertainty, per-file arithmetic and checks using the same electrical services.
+Document search hints do not become global parameters spanning unrelated circuits.
 
 Rebuild and deploy **both web and backend** to use the updated memory behavior
-and system instruction. There are no new credentials, variables or migrations.
+and system instruction. Chat memory needs no new credentials or migrations;
+attachment settings are documented separately in the document guide.
 
 After `npm run build` from `web/`, run `npm run test:chat-memory` there. This
 starts a temporary local production preview and uses intercepted API fixtures,
