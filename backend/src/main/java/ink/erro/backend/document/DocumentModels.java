@@ -7,7 +7,11 @@ import java.util.List;
 public final class DocumentModels {
     private DocumentModels() {}
     public record Evidence(String id, String filename, String location, String method, String text,
-                           List<Item> items) {}
+                           List<Item> items, boolean incomplete) {
+        public Evidence(String id, String filename, String location, String method, String text, List<Item> items) {
+            this(id, filename, location, method, text, items, false);
+        }
+    }
     // An item describes one schedule row or one physical symbol, never a crop-wide total.
     public record Item(String reference, String description, BigDecimal quantity, String unit,
                        String basis, BigDecimal modulesEach, String partNumber) {}

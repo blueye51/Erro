@@ -83,32 +83,40 @@ try:
     assert requests == [], 'Structured text must not call vision'
     png = b'\x89PNG\r\n\x1a\n' + png_chunk(b'IHDR', struct.pack('>2I5B', 20, 20, 8, 2, 0, 0, 0))
     png += png_chunk(b'IDAT', zlib.compress((b'\x00' + b'\xff' * 60) * 20)) + png_chunk(b'IEND', b'')
-    evidence_sequence.extend([invalid_evidence, valid_evidence])
     vision = run_worker('drawing.png', png, endpoint)
     assert vision['extraction']['evidence'][0]['items'][0]['basis'] == 'VISION_SYMBOL_COUNT'
-    assert len(requests) == 2
+    assert len(requests) == 1
     req = requests[0]
     assert req['model'] == 'deepseek-flash' and req['store'] is False
     part = req['input'][0]['content'][1]
     assert part['type'] == 'input_image' and part['detail'] == 'original'
     assert base64.b64decode(part['image_url'].split(',')[1]).startswith(b'\x89PNG')
     assert 'tools' not in req and 'previous_response_id' not in req
-    assert requests[1]['input'][0]['content'][1] == part, 'Correction must use the same image'
-    assert 'previous extraction could not be validated' in requests[1]['input'][0]['content'][0]['text']
-    evidence_sequence.extend([invalid_evidence, invalid_evidence])
-    failed = run_worker('invalid-locations.png', png, endpoint)
-    assert 'after one automatic correction' in failed['error'] and 'extraction' not in failed
-    assert len(requests) == 4, 'Unusable evidence must stop after one correction'
+    evidence_sequence.append(invalid_evidence)
+    unlocated = run_worker('invalid-locations.png', png, endpoint)
+    reading = unlocated['extraction']['evidence'][0]
+    assert reading['incomplete'] and reading['items'][0]['basis'] == 'VISION_UNLOCATED'
+    assert reading['items'][0]['quantity'] is None and reading['items'][0]['modulesEach'] is None
+    assert len(requests) == 2, 'Unlocated content must not cause repeated coordinate requests'
+    evidence_sequence.extend(['C16 Q1 readable label', 'C16 Q1 readable label'])
+    unstructured = run_worker('unstructured.png', png, endpoint)
+    assert all(e['incomplete'] and not e['items'] for e in unstructured['extraction']['evidence'])
+    assert 'C16 Q1 readable label' in unstructured['extraction']['evidence'][0]['text']
+    assert len(requests) == 4, 'Format correction must stop after one attempt'
+    assert requests[2]['input'][0]['content'][1] == requests[3]['input'][0]['content'][1]
+    assert 'previous extraction could not be validated' in requests[3]['input'][0]['content'][0]['text']
     if args.pdf:
         requests.clear()
-        evidence_sequence.extend([invalid_evidence, valid_evidence])
+        evidence_sequence.extend([invalid_evidence] * 32)
         pdf = run_worker(args.pdf.name, args.pdf.read_bytes(), endpoint)
         assert 'extraction' in pdf, pdf.get('error', 'PDF extraction missing')
         if requests:
-            assert len(requests) >= 2
-            assert 'previous extraction could not be validated' in requests[1]['input'][0]['content'][0]['text']
+            visual = [e for e in pdf['extraction']['evidence'] if e['method'] == 'VISION']
+            assert visual and all(e['incomplete'] for e in visual)
+            assert all(i['quantity'] is None for e in visual for i in e['items'])
+            assert len(requests) <= 32
         print(f'PASS: local PDF through packaged worker ({len(requests)} mock vision calls)')
-    print('PASS: packaged Boot worker, CSV without vision, inline DeepSeek images, bounded coordinate correction and safe failure')
+    print('PASS: packaged Boot worker, CSV without vision, readable unlocated evidence, no invented quantities, bounded format correction')
 finally:
     server.shutdown()
     server.server_close()

@@ -49,6 +49,9 @@ browser references; server evidence expires (30 minutes by default). No saved
 chats or accounts are introduced. See [Temporary chat documents](documents.md)
 for security, limits, deployment and verification. Live vision accuracy on real
 project documents has not yet been established.
+Readable visual content remains available with warnings when model-generated
+locations or structure are unreliable. These readings are marked incomplete,
+have no usable item quantities, and cannot establish exhaustive counts/DIN totals.
 
 - React/TypeScript/Vite in `web/`, Spring Boot/Java/Maven in `backend/`.
 - Existing `POST /api/chat` now runs intent/parameter extraction, bounded knowledge

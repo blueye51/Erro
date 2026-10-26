@@ -35,11 +35,14 @@ public class DocumentContextService {
             int length = json.writeValueAsString(e).length();
             if (bounded.size() < MAX_EXCERPTS && size + length <= MAX_CONTEXT) { bounded.add(e); size += length; }
         }
-        boolean complete = bounded.size() == all.size();
+        boolean fullyRetrieved = bounded.size() == all.size();
+        boolean incompleteExtraction = all.stream().anyMatch(Evidence::incomplete);
+        boolean complete = fullyRetrieved && !incompleteExtraction;
         var assessments=assessment.assess(bounded);
         var catalogWidths=new HashMap<String,BigDecimal>();
         assessments.forEach(a->{ if(a.catalogModulesEach()!=null) catalogWidths.put(a.evidenceId(),a.catalogModulesEach()); });
-        if (!complete) warnings.add("Only " + bounded.size() + " of " + all.size() + " document excerpts fit this question. This is partial retrieval, not an exhaustive project takeoff. Ask about a specific file, sheet or component.");
+        if (!fullyRetrieved) warnings.add("Only " + bounded.size() + " of " + all.size() + " document excerpts fit this question. This is partial retrieval, not an exhaustive project takeoff. Ask about a specific file, sheet or component.");
+        if (incompleteExtraction) warnings.add("Some visual readings have uncertain locations or structure. Their text remains available, but overlapping readings cannot establish exhaustive quantities or DIN totals. Review the marked regions against the original.");
         warnings.add("Selected files are evidence for this problem, not verified manufacturer specifications. Do not combine projects or sum specifications with drawings; reconcile references and revisions first.");
         var computed = new ArrayList<ElectricalCalculationService.Calculation>();
         // Aggregate complete structured tables per file only. Vision-derived numbers never enter exact arithmetic.

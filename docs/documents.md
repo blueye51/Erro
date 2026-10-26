@@ -74,21 +74,30 @@ outside this application's control; `store: false` is not a retention guarantee.
 
 No AI extraction call is made for reliably readable text-only documents. Visual
 extraction records printed OCR quantities, inferred symbol counts, estimates and
-unknowns separately. A breaker label such as C16 is not a quantity. Malformed
-or unlocated extraction output receives one automatic correction attempt using
-the same image and explicit coordinate instructions. A truncated provider reply,
-or evidence that remains invalid after correction, fails the file. A failed file
-publishes no partial extraction.
+unknowns separately. A breaker label such as C16 is not a quantity. Readable
+content does not require a valid symbol location: unlocated readings retain
+their labels/references with `VISION_UNLOCATED`, null quantity/module width and
+`incomplete: true`. Valid locations still pass the crop ownership check. A bad
+coordinate never rejects the document or causes a coordinate-only retry.
+
+Malformed item/JSON structure receives one correction attempt using the same
+image. Persistent formatting errors preserve up to 12,000 characters of the
+model's reading as unstructured, incomplete evidence without countable items.
+The model can also return a plain `text` field directly. Explicit truncation
+notes and extraction warnings identify these limitations. This fallback is
+untrusted model output, not a verified transcript. Provider/network failures,
+truncated provider replies and hard parser/resource limits still fail the file;
+those failed jobs publish no extraction.
 
 Vision locations use an explicitly declared `coordinateSpace`: `NORMALIZED_1000`
 (preferred; each axis ranges from 0 to 1000) or `PIXELS` (local to the supplied
 image dimensions). Older responses without this field use `NORMALIZED_1000`.
-Plain decimal numeric strings are accepted as numbers. Missing, nonfinite, negative or
-out-of-range locations and unsupported coordinate spaces require correction;
-values are never clamped or guessed from their magnitude. The provider receives
+Plain decimal numeric strings are accepted as numbers. Missing, nonfinite,
+negative or out-of-range locations and unsupported coordinate spaces produce
+unlocated readings; values are never clamped or guessed from their magnitude. The provider receives
 image dimensions but no page-wide crop offsets, avoiding confusion between page
 and image locations. Only validated locations reach the existing disjoint crop
-ownership check. Correction progress appears in the normal processing status.
+ownership check. Format-correction progress appears in the normal processing status.
 Provider/network failures are not automatically retried. At most two vision
 calls are made per crop (64 per file at the 32-crop limit), within the existing
 worker deadline. A correction can therefore add paid provider usage.
@@ -107,6 +116,14 @@ serialized characters, alongside the existing knowledge context. Partial
 retrieval is explicitly flagged; it cannot substantiate an exhaustive materials
 list. Select a subset of files or narrow the question when this limit applies.
 No document embeddings or permanent knowledge ingestion are introduced.
+`documentData.complete` is also false when any selected file contains incomplete
+visual evidence, even when every excerpt fits. Warnings distinguish extraction
+limitations from retrieval limits. Such readings remain citable and useful for
+labels, ratings and follow-ups, but cannot establish exhaustive quantities or
+DIN totals. The answer instruction prohibits treating entries as physical item
+counts, assuming zero missing items, or calling the original PDF blank merely
+because its model-generated coordinates were invalid. The UI marks these files
+ready with readings to review and exposes the detailed warnings.
 
 Document terms feed the existing knowledge search. Up to six direct excerpts
 also reuse parameter extraction, deterministic electrical calculations,
@@ -346,29 +363,35 @@ Deploy the updated backend; this fix requires no frontend or configuration
 change. Start **New problem** and reattach affected PDFs so questions use fresh
 extraction instead of any existing blank-image evidence.
 
-### Vision coordinate recovery — 2026-10-26
+### Preserve readable content with uncertain locations — 2026-10-26
 
-An out-of-range numeric location previously failed the complete file immediately.
-The extraction prompt now distinguishes image-local normalized and pixel
-coordinates, excludes page-wide offsets, and requests the coordinate space
-explicitly. Invalid extraction formats receive one correction attempt with
-the identical PNG. Correction never changes or clamps coordinates on the
-application's behalf; persistent invalid evidence still fails the whole file.
+Requiring every model-generated symbol location to be valid rejected otherwise
+readable files. A coordinate-correction retry also failed on the owner's PDF.
+Locations are now optional metadata: readable descriptions survive with explicit
+incomplete flags and no usable quantity/module width. Only valid positions can
+own/count a symbol within overlapping crops. Malformed response structure has
+one bounded correction attempt followed by an unstructured-reading fallback.
+The input remains untrusted and uncertain readings cannot produce exact totals.
 
-Maven `verify` passed: 85 tests, zero failures/errors, 7 opt-in PostgreSQL tests
-skipped (78 executed). Tests cover correction, bounded failure, explicit pixel
-units, decimal strings, overlap ownership, malformed JSON and provider failures
-without automatic retries. The rendering pixel comparisons continue to pass.
-The packaged worker smoke test passed, including the owner-supplied three-page
-PDF against a local mock: 12 crops and one simulated coordinate correction
-produced 13 mock vision requests. No real provider response was used, so this
-does not verify live model accuracy or guarantee successful correction of every
-response. Compose configuration passed; image builds, startup connection checks
-and PostgreSQL integration remain unverified because Docker is unavailable.
+Maven `verify` passed: 88 tests, zero failures/errors, 7 opt-in PostgreSQL tests
+skipped (81 executed). Tests cover persistently invalid locations, missing
+locations, unknown coordinate spaces, malformed/plain-text readings, citations,
+incomplete context, and the upload-to-chat API path. They verify that the file
+reaches READY with warnings, readable content is retained and bogus quantities
+do not reach calculations or the answer prompt. Rendering pixel comparisons and
+ordinary provider-failure tests also pass.
 
 Run `python3 scripts/verify-document-worker.py --pdf /path/to/project.pdf` after
-Maven packaging to reproduce PDF extraction and coordinate recovery using only
-the local mock. Without `--pdf`, the generated CSV/image fixtures still run.
-The optional document is not committed, indexed or sent to an external provider.
-Deploy only the updated backend, then remove/re-upload the failed attachment
-or start **New problem**. No new configuration or frontend change is required.
+Maven packaging to exercise a local PDF through the packaged worker and local
+mock. The mock deliberately returns invalid coordinates for every visual crop;
+they must remain readable/incomplete with null quantities and no coordinate
+retries. Without `--pdf`, the generated CSV/image fixtures still run. The optional
+document is not committed, indexed or sent to an external provider. Compose
+configuration passed; local image builds, startup connection checks and PostgreSQL
+integration remain unverified because Docker is unavailable.
+The packaged worker check passed on the owner's three-page PDF with invalid
+coordinates on all 12 crops: 12 mock requests completed with readable incomplete
+evidence and no fabricated quantities.
+
+Deploy only the updated backend, then remove/re-upload the failed attachment or
+start **New problem**. No new configuration or frontend change is required.

@@ -89,6 +89,26 @@ class DocumentApiTest {
         mvc.perform(delete("/api/attachments/files/"+id).header("X-Problem-Token",token)).andExpect(status().isNoContent());
         assertThat(store.list(token)).isEmpty();
     }
+    @Test void unlocatedVisualReadingsReachChatWithWarningsAndWithoutTotals() throws Exception {
+        when(ai.analyzeImage(anyString(),anyString(),anyString(),any())).thenReturn("""
+            {"coordinateSpace":"NORMALIZED_1000","items":[{"reference":"Q1","description":"C16 breaker label",
+            "quantity":99,"unit":"pcs","basis":"LISTED","modulesEach":2,"x":1500,"y":500}],"notes":"Readable drawing"}
+            """);
+        String token=create(); String id=upload(token,"panel.png",DocumentTest.png(120,120));
+        DocumentTest.awaitReady(store,token);
+        mvc.perform(get("/api/attachments/files").header("X-Problem-Token",token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].status").value("READY"))
+                .andExpect(jsonPath("$[0].warnings").isNotEmpty());
+        mvc.perform(post("/api/chat").header("X-Problem-Token",token).contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(new ChatController.ChatMessage("Read the labels and explain the DIN requirement",List.of(),List.of(id)))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.documentSources[0].filename").value("panel.png"))
+                .andExpect(jsonPath("$.calculations").isEmpty()).andExpect(jsonPath("$.warnings").isNotEmpty());
+        var data=json.readTree(prompt.get()).path("documentData");
+        assertThat(data.path("complete").asBoolean()).isFalse();
+        assertThat(data.path("excerpts").get(0).path("incomplete").asBoolean()).isTrue();
+        assertThat(prompt.get()).contains("VISION_UNLOCATED").doesNotContain("\"quantity\":99");
+        verify(ai,times(1)).analyzeImage(anyString(),anyString(),anyString(),any());
+    }
     @Test void rejectsOversizeUnsupportedTypesAndCrossOriginAccess() throws Exception {
         String token=create();
         mvc.perform(multipart("/api/attachments/files").file(new MockMultipartFile("file","too-big.txt","text/plain",new byte[(int)DocumentExtractor.MAX_FILE_BYTES+1]))

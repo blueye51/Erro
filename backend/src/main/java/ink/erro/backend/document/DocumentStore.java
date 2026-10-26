@@ -104,7 +104,9 @@ public class DocumentStore {
                 int size=tools.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(extracted).length();
                 if(cachedCharacters+size>MAX_CACHED_CHARACTERS) throw DocumentException.invalid("Temporary document cache is full. Remove older attachments or retry later.");
                 job.cachedCharacters=size; cachedCharacters+=size;
-                job.extraction = extracted; job.state = "READY"; job.progress = "Ready for questions";
+                job.extraction = extracted; job.state = "READY";
+                job.progress = extracted.evidence().stream().anyMatch(Evidence::incomplete)
+                        ? "Ready for questions; some readings need review" : "Ready for questions";
             }
         } catch (Exception ex) {
             synchronized (this) {

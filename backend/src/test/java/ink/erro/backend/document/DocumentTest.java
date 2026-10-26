@@ -139,24 +139,28 @@ class DocumentTest {
         verify(ai,times(2)).analyzeImage(anyString(),anyString(),anyString(),any());
         assertThat(result.evidence().getLast().location()).contains("x=1400");
     }
-    @Test void malformedVisionFailsInsteadOfPublishingUnlocatedCounts() {
+    @Test void missingVisionLocationsPreserveLabelsWithoutPublishingCounts() throws Exception {
         when(ai.analyzeImage(anyString(),anyString(),anyString(),any())).thenReturn("{\"items\":[{\"description\":\"C16\",\"quantity\":99}]}");
-        assertThatThrownBy(()->extractor.extract("scan.png",png(100,100),s->{}))
-                .hasMessageContaining("after one automatic correction").hasMessageContaining("Image 1, crop 1/1");
-        verify(ai,times(2)).analyzeImage(anyString(),anyString(),anyString(),any());
+        var result = extractor.extract("scan.png",png(100,100),s->{});
+        assertThat(result.evidence()).allMatch(Evidence::incomplete);
+        assertThat(result.evidence().stream().flatMap(e -> e.items().stream())).singleElement().satisfies(item -> {
+            assertThat(item.description()).isEqualTo("C16");
+            assertThat(item.basis()).isEqualTo("VISION_UNLOCATED");
+            assertThat(item.quantity()).isNull();
+        });
+        assertThat(result.warnings()).anyMatch(w -> w.contains("uncertain locations"));
+        verify(ai,times(1)).analyzeImage(anyString(),anyString(),anyString(),any());
     }
-    @Test void outOfRangeVisionCoordinatesAreCorrectedWithoutClampingOrChangingTheImage() throws Exception {
+    @Test void outOfRangeVisionCoordinatesPreserveTextWithoutClampingOrExtraCalls() throws Exception {
         when(ai.analyzeImage(anyString(),anyString(),anyString(),any()))
                 .thenReturn(VISION.replace("\"x\":500", "\"x\":1500"), VISION);
         var progress = new ArrayList<String>();
         var result = extractor.extract("scan.png", png(100,100), progress::add);
         assertThat(result.evidence().stream().flatMap(e -> e.items().stream())).hasSize(1);
-        assertThat(progress).anyMatch(s -> s.contains("Correcting vision evidence"));
-        var prompts = org.mockito.ArgumentCaptor.forClass(String.class);
-        var images = org.mockito.ArgumentCaptor.forClass(byte[].class);
-        verify(ai,times(2)).analyzeImage(anyString(),anyString(),prompts.capture(),images.capture());
-        assertThat(prompts.getAllValues().getLast()).contains("outside the declared image coordinate range", "0..1000", "full corrected JSON");
-        assertThat(images.getAllValues().getFirst()).isEqualTo(images.getAllValues().getLast());
+        assertThat(result.evidence()).allMatch(Evidence::incomplete);
+        assertThat(result.evidence().getFirst().items().getFirst().quantity()).isNull();
+        assertThat(progress).noneMatch(s -> s.contains("Correcting vision evidence"));
+        verify(ai,times(1)).analyzeImage(anyString(),anyString(),anyString(),any());
     }
     @Test void explicitlyDeclaredPixelCoordinatesKeepCropOwnershipWithNumericStrings() throws Exception {
         String first = VISION.replace("{\"items\"", "{\"coordinateSpace\":\"PIXELS\",\"items\"")
@@ -168,7 +172,7 @@ class DocumentTest {
         assertThat(result.evidence().getLast().location()).contains("x=1400");
         verify(ai,times(2)).analyzeImage(anyString(),anyString(),anyString(),any());
     }
-    @Test void unusableCoordinateSpacesAndPersistentOutliersStopAfterOneCorrection() throws Exception {
+    @Test void unusableCoordinateSpacesAndPersistentOutliersRemainUncountedReadings() throws Exception {
         for (String response : List.of(
                 VISION.replace("\"x\":500", "\"x\":1500"),
                 VISION.replace("\"x\":500", "\"x\":-1"),
@@ -177,9 +181,14 @@ class DocumentTest {
                 VISION.replace("{\"items\"", "{\"coordinateSpace\":\"PIXELS\",\"items\""))) {
             reset(ai);
             when(ai.analyzeImage(anyString(),anyString(),anyString(),any())).thenReturn(response);
-            assertThatThrownBy(() -> extractor.extract("scan.png",png(100,100), status -> {}))
-                    .hasMessageContaining("after one automatic correction");
-            verify(ai,times(2)).analyzeImage(anyString(),anyString(),anyString(),any());
+            var result = extractor.extract("scan.png",png(100,100), status -> {});
+            assertThat(result.evidence()).allMatch(Evidence::incomplete);
+            assertThat(result.evidence().getFirst().items()).singleElement().satisfies(item -> {
+                assertThat(item.basis()).isEqualTo("VISION_UNLOCATED");
+                assertThat(item.quantity()).isNull();
+                assertThat(item.modulesEach()).isNull();
+            });
+            verify(ai,times(1)).analyzeImage(anyString(),anyString(),anyString(),any());
         }
     }
     @Test void malformedJsonReceivesOneCorrectionButProviderFailuresAreNotRetried() throws Exception {
@@ -191,6 +200,35 @@ class DocumentTest {
         when(ai.analyzeImage(anyString(),anyString(),anyString(),any())).thenThrow(failure);
         assertThatThrownBy(() -> extractor.extract("scan.png",png(100,100), status -> {})).isSameAs(failure);
         verify(ai,times(1)).analyzeImage(anyString(),anyString(),anyString(),any());
+    }
+    @Test void persistentFormatErrorsAndTextOnlyRepliesPreserveIncompleteVisualContent() throws Exception {
+        for (String response : List.of("C16 Q1 readable label, structure unavailable", "{\"text\":\"C16 Q1 readable label\"}",
+                "{\"text\":\"C16 Q1 readable label "+"x".repeat(20000)+"\"}")) {
+            reset(ai);
+            when(ai.analyzeImage(anyString(),anyString(),anyString(),any())).thenReturn(response);
+            var result = extractor.extract("scan.png",png(100,100), status -> {});
+            assertThat(result.evidence()).allMatch(Evidence::incomplete)
+                    .anyMatch(e -> e.text().contains("C16 Q1 readable label"));
+            assertThat(result.evidence().stream().flatMap(e -> e.items().stream())).isEmpty();
+            assertThat(result.evidence().stream().mapToInt(e -> e.text().length()).sum()).isLessThan(12500);
+            if (response.length() > 12000) assertThat(result.evidence()).anyMatch(e -> e.text().contains("Reading truncated"));
+            verify(ai,times(response.startsWith("{") ? 1 : 2)).analyzeImage(anyString(),anyString(),anyString(),any());
+        }
+    }
+    @Test void unlocatedReadingsAreCitableButNeverCompleteOrCalculated() {
+        var store = mock(DocumentStore.class);
+        var assessment = mock(DocumentAssessmentService.class);
+        when(assessment.assess(anyList())).thenReturn(List.of());
+        var evidence = new Evidence("D-"+UUID.randomUUID(),"panel.pdf","Page 1, region x=0..1400","VISION",
+                "C16 Q1 readable label", List.of(new Item("Q1","C16",null,"pcs","VISION_UNLOCATED",null,"")),true);
+        when(store.read("token",List.of("id"))).thenReturn(List.of(new Extraction(List.of(evidence),List.of())));
+        var result = new DocumentContextService(store,new ElectricalCalculationService(),assessment)
+                .retrieve("token",List.of("id"),"How many C16 breakers and DIN modules?");
+        assertThat(result.complete()).isFalse();
+        assertThat(result.calculations()).isEmpty();
+        assertThat(result.warnings()).anyMatch(w -> w.contains("uncertain locations"))
+                .noneMatch(w -> w.startsWith("Only 1 of 1"));
+        assertThat(new CitationMapper().documents("Label ["+evidence.id()+"]",result.excerpts()).sources()).hasSize(1);
     }
     @Test void csvWordAndExcelPreserveStructuredQuantitiesAndUnits() throws Exception {
         var csv=extractor.extract("kaablid.csv",("Nimetus;Kogus;Ühik;modules each\nC16 kaitselüliti;3;tk;1\nCable 3x2,5;12,5;m;\n").getBytes(StandardCharsets.UTF_8),s->{});
