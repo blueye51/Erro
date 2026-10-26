@@ -74,9 +74,24 @@ outside this application's control; `store: false` is not a retention guarantee.
 
 No AI extraction call is made for reliably readable text-only documents. Visual
 extraction records printed OCR quantities, inferred symbol counts, estimates and
-unknowns separately. A breaker label such as C16 is not a quantity. Malformed,
-truncated or unlocated model output fails the file rather than publishing it as a
-complete takeoff. A failed file publishes no partial extraction.
+unknowns separately. A breaker label such as C16 is not a quantity. Malformed
+or unlocated extraction output receives one automatic correction attempt using
+the same image and explicit coordinate instructions. A truncated provider reply,
+or evidence that remains invalid after correction, fails the file. A failed file
+publishes no partial extraction.
+
+Vision locations use an explicitly declared `coordinateSpace`: `NORMALIZED_1000`
+(preferred; each axis ranges from 0 to 1000) or `PIXELS` (local to the supplied
+image dimensions). Older responses without this field use `NORMALIZED_1000`.
+Plain decimal numeric strings are accepted as numbers. Missing, nonfinite, negative or
+out-of-range locations and unsupported coordinate spaces require correction;
+values are never clamped or guessed from their magnitude. The provider receives
+image dimensions but no page-wide crop offsets, avoiding confusion between page
+and image locations. Only validated locations reach the existing disjoint crop
+ownership check. Correction progress appears in the normal processing status.
+Provider/network failures are not automatically retried. At most two vision
+calls are made per crop (64 per file at the 32-crop limit), within the existing
+worker deadline. A correction can therefore add paid provider usage.
 
 The visual-extraction warning is an uncertainty notice and can appear after
 successful processing. The PDF text/table-layout notice appears only when PDF
@@ -252,6 +267,8 @@ Run with JDK 25 and installed frontend dependencies/Playwright Chromium:
 ```sh
 (cd backend && ./mvnw --batch-mode --no-transfer-progress verify)
 python3 scripts/verify-document-worker.py
+# Optional: exercise a local project PDF through the packaged worker and mock.
+python3 scripts/verify-document-worker.py --pdf /path/to/project.pdf
 (cd web && npm run build && npm run lint)
 (cd web && npm run test:chat-memory && npm run test:attachments)
 docker compose config --quiet
@@ -328,3 +345,30 @@ Compose startup connection checks and live DeepSeek recognition remain unverifie
 Deploy the updated backend; this fix requires no frontend or configuration
 change. Start **New problem** and reattach affected PDFs so questions use fresh
 extraction instead of any existing blank-image evidence.
+
+### Vision coordinate recovery — 2026-10-26
+
+An out-of-range numeric location previously failed the complete file immediately.
+The extraction prompt now distinguishes image-local normalized and pixel
+coordinates, excludes page-wide offsets, and requests the coordinate space
+explicitly. Invalid extraction formats receive one correction attempt with
+the identical PNG. Correction never changes or clamps coordinates on the
+application's behalf; persistent invalid evidence still fails the whole file.
+
+Maven `verify` passed: 85 tests, zero failures/errors, 7 opt-in PostgreSQL tests
+skipped (78 executed). Tests cover correction, bounded failure, explicit pixel
+units, decimal strings, overlap ownership, malformed JSON and provider failures
+without automatic retries. The rendering pixel comparisons continue to pass.
+The packaged worker smoke test passed, including the owner-supplied three-page
+PDF against a local mock: 12 crops and one simulated coordinate correction
+produced 13 mock vision requests. No real provider response was used, so this
+does not verify live model accuracy or guarantee successful correction of every
+response. Compose configuration passed; image builds, startup connection checks
+and PostgreSQL integration remain unverified because Docker is unavailable.
+
+Run `python3 scripts/verify-document-worker.py --pdf /path/to/project.pdf` after
+Maven packaging to reproduce PDF extraction and coordinate recovery using only
+the local mock. Without `--pdf`, the generated CSV/image fixtures still run.
+The optional document is not committed, indexed or sent to an external provider.
+Deploy only the updated backend, then remove/re-upload the failed attachment
+or start **New problem**. No new configuration or frontend change is required.

@@ -100,12 +100,13 @@ class DocumentTest {
                 var prompt = json.readTree(input.substring(input.indexOf('{')));
                 String location = prompt.path("location").asText();
                 var reference = references.get(Integer.parseInt(location.substring("Page ".length())) - 1);
-                var crop = prompt.path("crop");
-                int offsetX = crop.get(0).asInt(), offsetY = crop.get(1).asInt();
+                assertThat(prompt.has("crop")).isFalse();
+                int cropIndex = inspected.size() % 4;
+                int offsetX = (cropIndex % 2) * 1240, offsetY = (cropIndex / 2) * 1240;
                 var image = ImageIO.read(new ByteArrayInputStream((byte[]) call.getArgument(3)));
                 try {
-                    assertThat(image.getWidth()).isEqualTo(crop.get(2).asInt());
-                    assertThat(image.getHeight()).isEqualTo(crop.get(3).asInt());
+                    assertThat(image.getWidth()).isEqualTo(prompt.path("imageWidth").asInt());
+                    assertThat(image.getHeight()).isEqualTo(prompt.path("imageHeight").asInt());
                     int white = 0, ink = 0;
                     for (int y = 0; y < image.getHeight(); y++) for (int x = 0; x < image.getWidth(); x++) {
                         int expected = offsetX + x < reference.getWidth() && offsetY + y < reference.getHeight()
@@ -140,7 +141,56 @@ class DocumentTest {
     }
     @Test void malformedVisionFailsInsteadOfPublishingUnlocatedCounts() {
         when(ai.analyzeImage(anyString(),anyString(),anyString(),any())).thenReturn("{\"items\":[{\"description\":\"C16\",\"quantity\":99}]}");
-        assertThatThrownBy(()->extractor.extract("scan.png",png(100,100),s->{})).hasMessageContaining("omitted symbol locations");
+        assertThatThrownBy(()->extractor.extract("scan.png",png(100,100),s->{}))
+                .hasMessageContaining("after one automatic correction").hasMessageContaining("Image 1, crop 1/1");
+        verify(ai,times(2)).analyzeImage(anyString(),anyString(),anyString(),any());
+    }
+    @Test void outOfRangeVisionCoordinatesAreCorrectedWithoutClampingOrChangingTheImage() throws Exception {
+        when(ai.analyzeImage(anyString(),anyString(),anyString(),any()))
+                .thenReturn(VISION.replace("\"x\":500", "\"x\":1500"), VISION);
+        var progress = new ArrayList<String>();
+        var result = extractor.extract("scan.png", png(100,100), progress::add);
+        assertThat(result.evidence().stream().flatMap(e -> e.items().stream())).hasSize(1);
+        assertThat(progress).anyMatch(s -> s.contains("Correcting vision evidence"));
+        var prompts = org.mockito.ArgumentCaptor.forClass(String.class);
+        var images = org.mockito.ArgumentCaptor.forClass(byte[].class);
+        verify(ai,times(2)).analyzeImage(anyString(),anyString(),prompts.capture(),images.capture());
+        assertThat(prompts.getAllValues().getLast()).contains("outside the declared image coordinate range", "0..1000", "full corrected JSON");
+        assertThat(images.getAllValues().getFirst()).isEqualTo(images.getAllValues().getLast());
+    }
+    @Test void explicitlyDeclaredPixelCoordinatesKeepCropOwnershipWithNumericStrings() throws Exception {
+        String first = VISION.replace("{\"items\"", "{\"coordinateSpace\":\"PIXELS\",\"items\"")
+                .replace("\"x\":500", "\"x\":\"1450\"").replace("\"y\":500", "\"y\":\"150\"");
+        when(ai.analyzeImage(anyString(),anyString(),anyString(),any()))
+                .thenReturn(first, first.replace("\"1450\"", "\"210\""));
+        var result = extractor.extract("panel.png", png(2500,300), status -> {});
+        assertThat(result.evidence().stream().flatMap(e -> e.items().stream())).hasSize(1);
+        assertThat(result.evidence().getLast().location()).contains("x=1400");
+        verify(ai,times(2)).analyzeImage(anyString(),anyString(),anyString(),any());
+    }
+    @Test void unusableCoordinateSpacesAndPersistentOutliersStopAfterOneCorrection() throws Exception {
+        for (String response : List.of(
+                VISION.replace("\"x\":500", "\"x\":1500"),
+                VISION.replace("\"x\":500", "\"x\":-1"),
+                VISION.replace("\"x\":500", "\"x\":\"NaN\""),
+                VISION.replace("{\"items\"", "{\"coordinateSpace\":\"PAGE\",\"items\""),
+                VISION.replace("{\"items\"", "{\"coordinateSpace\":\"PIXELS\",\"items\""))) {
+            reset(ai);
+            when(ai.analyzeImage(anyString(),anyString(),anyString(),any())).thenReturn(response);
+            assertThatThrownBy(() -> extractor.extract("scan.png",png(100,100), status -> {}))
+                    .hasMessageContaining("after one automatic correction");
+            verify(ai,times(2)).analyzeImage(anyString(),anyString(),anyString(),any());
+        }
+    }
+    @Test void malformedJsonReceivesOneCorrectionButProviderFailuresAreNotRetried() throws Exception {
+        when(ai.analyzeImage(anyString(),anyString(),anyString(),any())).thenReturn("not JSON", VISION);
+        assertThat(extractor.extract("scan.png",png(100,100), status -> {}).evidence()).isNotEmpty();
+        verify(ai,times(2)).analyzeImage(anyString(),anyString(),anyString(),any());
+        reset(ai);
+        var failure = new AiException(org.springframework.http.HttpStatus.BAD_GATEWAY,"Provider unavailable");
+        when(ai.analyzeImage(anyString(),anyString(),anyString(),any())).thenThrow(failure);
+        assertThatThrownBy(() -> extractor.extract("scan.png",png(100,100), status -> {})).isSameAs(failure);
+        verify(ai,times(1)).analyzeImage(anyString(),anyString(),anyString(),any());
     }
     @Test void csvWordAndExcelPreserveStructuredQuantitiesAndUnits() throws Exception {
         var csv=extractor.extract("kaablid.csv",("Nimetus;Kogus;Ühik;modules each\nC16 kaitselüliti;3;tk;1\nCable 3x2,5;12,5;m;\n").getBytes(StandardCharsets.UTF_8),s->{});

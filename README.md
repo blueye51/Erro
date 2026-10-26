@@ -121,3 +121,4 @@ This starts and stops its own local preview and mocks only the chat endpoint.
 For attachment UI checks, run `npm run test:attachments` from `web/`.
 After Maven packages the backend, run `python3 scripts/verify-document-worker.py`
 from the root to test the packaged worker and vision API against a local mock.
+Add `--pdf /path/to/project.pdf` to exercise a local PDF without sending it externally.
