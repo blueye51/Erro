@@ -66,6 +66,8 @@ leases are 150 seconds for replies and five minutes for document jobs. Expired
 leases become explicit failures, allowing manual retry without an invisible
 permanent lock or automatic repeated paid calls. Cleanup runs every 30 seconds.
 No database connection/transaction remains open during AI or parser calls.
+Keep provider timeouts below the reply lease, allowing time for retrieval; the
+default 60-second timeout fits the 150-second lease.
 
 Original file bytes are stored only while queued/processing, then cleared on
 success or failure. Extracted evidence is stored with the chat until deletion or
@@ -185,3 +187,21 @@ responsive layouts, source formatting and protected knowledge management.
   and the Windows Docker engine pipe was missing. Native fixtures used JDK 25,
   PostgreSQL 16 and Nginx 1.24; they do not replace verification against the pinned
   PostgreSQL 18.6/Nginx 1.30.5 images or Redis/S3 startup checks.
+
+## Deployed verification — 2026-10-26
+
+Commit `09947c5` was pushed to `main`; both Railway backend/web deployments
+reported success. A fresh Chromium guest on `https://erro.ink` received the
+Secure/HttpOnly/SameSite=Strict cookie and processed the owner's supplied
+`26004_PP_EL-7-01_v01_Peakilp.pdf` against the configured live vision provider.
+The saved attachment became READY with 42 excerpts and five uncertainty warnings.
+
+The real provider answered a document-summary question, accepted a one-letter
+`a` follow-up, restored both exchanges and the attachment after refresh, then
+answered another follow-up. The database-backed API returned all six messages
+with nine document citation entries. There were no browser errors; the mobile
+view was inspected. A separate guest received 404 for the owned chat. Delete-all
+removed the live test content and returned a fresh empty guest/chat. No original
+PDF, rendered image, guest token or live provider credential was committed.
+These checks establish persistence and working follow-ups, not drawing accuracy,
+complete symbol counts or installation suitability.

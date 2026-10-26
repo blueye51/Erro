@@ -55,9 +55,9 @@ retrieval/citations and scoped electrical checks/catalog data. Documents belong
 to their chat and never enter permanent knowledge automatically. Parser originals
 are discarded after processing; extracted evidence survives with the chat.
 See [Guest chats](guest-chats.md) and [Chat documents](documents.md). The supplied
-three-page Peakilp visual PDF was successfully extracted against the live vision
-provider before this persistence change; that is not a guarantee of drawing
-interpretation or exhaustive quantities.
+three-page Peakilp visual PDF passed a live saved-chat check: extraction, a
+one-letter follow-up, refresh restoration and another follow-up. This verifies
+the processing/persistence path, not drawing interpretation or exhaustive quantities.
 Readable visual content remains available with warnings when model-generated
 locations or structure are unreliable. These readings are marked incomplete,
 have no usable item quantities, and cannot establish exhaustive counts/DIN totals.
