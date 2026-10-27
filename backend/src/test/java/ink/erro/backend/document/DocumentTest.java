@@ -95,14 +95,18 @@ class DocumentTest {
                 references.add(renderer.renderImageWithDPI(page, 200, org.apache.pdfbox.rendering.ImageType.RGB));
             var json = tools.jackson.databind.json.JsonMapper.builder().build();
             var inspected = new ArrayList<String>();
+            var pageCrops=new HashMap<String,Integer>();
             when(ai.analyzeImage(anyString(), anyString(), anyString(), any())).thenAnswer(call -> {
                 String input = call.getArgument(2);
                 var prompt = json.readTree(input.substring(input.indexOf('{')));
                 String location = prompt.path("location").asText();
                 var reference = references.get(Integer.parseInt(location.substring("Page ".length())) - 1);
                 assertThat(prompt.has("crop")).isFalse();
-                int cropIndex = inspected.size() % 4;
-                int offsetX = (cropIndex % 2) * 1240, offsetY = (cropIndex / 2) * 1240;
+                int cropIndex = pageCrops.merge(location,1,Integer::sum)-1;
+                int fullWidth=prompt.path("imageWidth").asInt();
+                assertThat(fullWidth).isBetween(reference.getWidth(),reference.getWidth()+1);
+                int bandHeight=Math.min(1400,Math.max(500,1_600_000/fullWidth-320));
+                int offsetX=0,offsetY=Math.max(0,cropIndex*bandHeight-160);
                 var image = ImageIO.read(new ByteArrayInputStream((byte[]) call.getArgument(3)));
                 try {
                     assertThat(image.getWidth()).isEqualTo(prompt.path("imageWidth").asInt());
@@ -123,7 +127,8 @@ class DocumentTest {
                 return VISION;
             });
             extractor.extract("vector-panel.pdf", bytes.toByteArray(), status -> {});
-            assertThat(inspected).hasSize(16).doesNotHaveDuplicates();
+            assertThat(inspected).hasSize(12).doesNotHaveDuplicates();
+            assertThat(pageCrops.values()).allMatch(count->count==3);
         } finally { references.forEach(BufferedImage::flush); }
     }
     @Test void mixedPdfPreservesTextAndVisualEvidence() throws Exception {
@@ -150,6 +155,28 @@ class DocumentTest {
         });
         assertThat(result.warnings()).anyMatch(w -> w.contains("uncertain locations"));
         verify(ai,times(1)).analyzeImage(anyString(),anyString(),anyString(),any());
+    }
+    @Test void portraitBandsPreserveBothTableEdgesAndCountOverlapOnlyOnce() throws Exception {
+        when(ai.analyzeImage(anyString(),anyString(),anyString(),any())).thenReturn(
+                VISION.replace("\"y\":500","\"y\":834"), VISION.replace("\"y\":500","\"y\":180"),
+                "{\"items\":[],\"notes\":\"No additional symbols\"}");
+        var regions=new ArrayList<Rectangle>();
+        var result=vision.extractPage("panel.pdf","Page 1",1600,1600,(x,y,w,h)->{
+            regions.add(new Rectangle(x,y,w,h));return new BufferedImage(w,h,BufferedImage.TYPE_INT_RGB);
+        },new int[]{32},s->{});
+        assertThat(regions).hasSize(3).allSatisfy(r->{
+            assertThat(r.x).isZero();assertThat(r.width).isEqualTo(1600);
+            assertThat(r.width*r.height).isLessThanOrEqualTo(1_600_000);
+        });
+        assertThat(result.stream().flatMap(e->e.items().stream())).hasSize(1);
+        assertThat(result.get(1).items().getFirst().quantity()).isEqualByComparingTo("1");
+    }
+    @Test void visualItemsAreStoredOnceAndRemainSearchableWithoutDuplicatedJson() throws Exception {
+        var result=extractor.extract("panel.png",png(100,100),s->{});
+        var e=result.evidence().getFirst();
+        assertThat(e.text()).isEqualTo("Check original drawing").doesNotContain("C16");
+        assertThat(DocumentEvidence.searchable(e)).contains("C16","Panel A/Q1");
+        assertThat(e.items()).hasSize(1);
     }
     @Test void outOfRangeVisionCoordinatesPreserveTextWithoutClampingOrExtraCalls() throws Exception {
         when(ai.analyzeImage(anyString(),anyString(),anyString(),any()))
@@ -328,7 +355,7 @@ class DocumentTest {
         assertThat(result.excerpts().getFirst().id()).isEqualTo(target.id());
         assertThat(result.excerpts()).hasSizeLessThanOrEqualTo(24);
         var json=tools.jackson.databind.json.JsonMapper.builder().build();
-        assertThat(result.excerpts().stream().mapToInt(e->json.writeValueAsString(e).length()).sum()).isLessThanOrEqualTo(24000);
+        assertThat(json.writeValueAsString(result.excerpts().stream().map(DocumentEvidence::prompt).toList()).length()).isLessThanOrEqualTo(24000);
         assertThat(result.complete()).isFalse();assertThat(result.warnings()).anyMatch(w->w.contains("partial retrieval"));
     }
     @Test void exactCatalogPartSuppliesDinWidthAndReusesValidation() throws Exception {

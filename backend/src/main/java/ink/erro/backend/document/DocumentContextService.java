@@ -12,7 +12,7 @@ public class DocumentContextService {
     private final DocumentStore store;
     private final ElectricalCalculationService arithmetic;
     private final DocumentAssessmentService assessment;
-    private static final int MAX_CONTEXT = 24000, MAX_EXCERPTS = 24;
+    private static final int MAX_CONTEXT = 24000, MAX_EXCERPTS = 96;
     private static final Pattern BREAKER = Pattern.compile("(?i)(?<![\\p{L}\\d])([BCD])\\s?(\\d{1,3})(?!\\d)");
     private final tools.jackson.databind.json.JsonMapper json = tools.jackson.databind.json.JsonMapper.builder().build();
     public DocumentContextService(DocumentStore store, ElectricalCalculationService arithmetic,DocumentAssessmentService assessment) { this.store = store; this.arithmetic = arithmetic; this.assessment=assessment; }
@@ -23,7 +23,7 @@ public class DocumentContextService {
     }
     public Context fromExtractions(List<Extraction> files,String question) {
         if(files.isEmpty()) return Context.empty();
-        var all = files.stream().flatMap(f -> f.evidence().stream()).toList();
+        var all = files.stream().flatMap(f -> f.evidence().stream()).map(DocumentEvidence::compact).toList();
         var warnings = new LinkedHashSet<String>(); files.forEach(f -> warnings.addAll(f.warnings()));
         var terms = terms(question);
         int followUp=question.lastIndexOf("\nFollow-up:");
@@ -32,21 +32,36 @@ public class DocumentContextService {
         ranked.sort(Comparator.comparingInt((Evidence e) -> score(e,terms)+3*score(e,latestTerms)).reversed());
         // At least one excerpt per selected file precedes the rest; comparisons cannot silently omit a file.
         var selected = new LinkedHashMap<String,Evidence>();
-        for (var file : files) ranked.stream().filter(e -> file.evidence().contains(e)).findFirst().ifPresent(e -> selected.put(e.id(),e));
-        for (var e : ranked) selected.putIfAbsent(e.id(),e);
-        int size = 0; var bounded = new ArrayList<Evidence>();
+        for (var file : files) {
+            var ids=file.evidence().stream().map(Evidence::id).collect(java.util.stream.Collectors.toSet());
+            ranked.stream().filter(e -> ids.contains(e.id())).findFirst().ifPresent(e -> selected.put(e.id(),e));
+        }
+        // Round-robin pages for a whole-document question. A dense first page must not
+        // hide a later panel schedule merely because both match generic query terms.
+        if(question.toLowerCase(Locale.ROOT).matches("(?s).*(din|modul|moodul|cabinet|takeoff|parts list|material|estimate|kilp).*$")) {
+            var pages=new LinkedHashMap<String,ArrayDeque<Evidence>>();
+            for(var e:ranked) {
+                var page=Pattern.compile("^Page \\d+").matcher(e.location());
+                String key=e.filename()+"/"+(page.find()?page.group():"other");
+                pages.computeIfAbsent(key,k->new ArrayDeque<>()).add(e);
+            }
+            while(pages.values().stream().anyMatch(p->!p.isEmpty())) for(var page:pages.values())
+                if(!page.isEmpty()) { var e=page.removeFirst();selected.putIfAbsent(e.id(),e); }
+        } else for (var e : ranked) selected.putIfAbsent(e.id(),e);
+        int size = 2; var bounded = new ArrayList<Evidence>();
         for (var e : selected.values()) {
-            int length = json.writeValueAsString(e).length();
+            int length = json.writeValueAsString(DocumentEvidence.prompt(e)).length()+(bounded.isEmpty()?0:1);
             if (bounded.size() < MAX_EXCERPTS && size + length <= MAX_CONTEXT) { bounded.add(e); size += length; }
         }
         boolean fullyRetrieved = bounded.size() == all.size();
-        boolean incompleteExtraction = all.stream().anyMatch(Evidence::incomplete);
+        int uncertainExcerpts=(int)all.stream().filter(Evidence::incomplete).count();
+        boolean incompleteExtraction = uncertainExcerpts>0;
         boolean complete = fullyRetrieved && !incompleteExtraction;
         var assessments=assessment.assess(bounded);
         var catalogWidths=new HashMap<String,BigDecimal>();
         assessments.forEach(a->{ if(a.catalogModulesEach()!=null) catalogWidths.put(a.evidenceId(),a.catalogModulesEach()); });
-        if (!fullyRetrieved) warnings.add("Only " + bounded.size() + " of " + all.size() + " document excerpts fit this question. This is partial retrieval, not an exhaustive project takeoff. Ask about a specific file, sheet or component.");
-        if (incompleteExtraction) warnings.add("Some visual readings have uncertain locations or structure. Their text remains available, but overlapping readings cannot establish exhaustive quantities or DIN totals. Review the marked regions against the original.");
+        if (!fullyRetrieved) warnings.add("Only " + bounded.size() + " of " + all.size() + " extracted excerpts fit this request (partial retrieval). The omitted excerpts remain saved; this does not mean the original drawing is unreadable. Give the supported inventory/subtotal and identify the missing coverage.");
+        if (incompleteExtraction) warnings.add(uncertainExcerpts+" excerpts have uncertain locations or structure. Use their readable text, but do not count unlocated readings. Other located items remain usable as visual estimates; uncertainty is not proof that the original is illegible.");
         warnings.add("Selected files are evidence for this problem, not verified manufacturer specifications. Do not combine projects or sum specifications with drawings; reconcile references and revisions first.");
         var computed = new ArrayList<ElectricalCalculationService.Calculation>();
         // Aggregate complete structured tables per file only. Vision-derived numbers never enter exact arithmetic.
@@ -93,11 +108,11 @@ public class DocumentContextService {
             else if (question.toLowerCase(Locale.ROOT).matches("(?s).*(din|modul|moodul).*"))
                 warnings.add(filename + ": DIN total requires explicit modules per device and piece units for every row. No width was inferred from breaker rating or pole count.");
         }
-        return new Context(List.copyOf(bounded),List.copyOf(warnings),all.size(),complete,List.copyOf(computed),assessments);
+        return new Context(List.copyOf(bounded),List.copyOf(warnings),all.size(),complete,List.copyOf(computed),assessments,uncertainExcerpts);
     }
     public static String searchHints(Context context) {
         // Hints drive retrieval, not scalar parameter extraction across unrelated circuits.
-        return context.excerpts().stream().map(e -> e.text().substring(0,Math.min(400,e.text().length())))
+        return context.excerpts().stream().map(DocumentEvidence::searchable).map(s -> s.substring(0,Math.min(400,s.length())))
                 .limit(8).collect(java.util.stream.Collectors.joining("\n"));
     }
     private static Set<String> terms(String text) {
@@ -109,7 +124,7 @@ public class DocumentContextService {
         return result;
     }
     private static int score(Evidence evidence, Set<String> terms) {
-        String text = (evidence.filename() + " " + evidence.location() + " " + evidence.text()).toLowerCase(Locale.ROOT);
+        String text = (evidence.filename() + " " + evidence.location() + " " + DocumentEvidence.searchable(evidence)).toLowerCase(Locale.ROOT);
         return terms.stream().mapToInt(t -> text.contains(t) ? 1 : 0).sum();
     }
 }

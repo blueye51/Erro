@@ -21,7 +21,12 @@ public final class DocumentModels {
     public record Problem(String token, Instant expiresAt, int maxFiles, long maxFileBytes) {}
     public record Context(List<Evidence> excerpts, List<String> warnings, int totalExcerpts,
                           boolean complete, List<ink.erro.backend.electrical.ElectricalCalculationService.Calculation> calculations,
-                          List<DocumentAssessmentService.Assessment> assessments) {
+                          List<DocumentAssessmentService.Assessment> assessments, int uncertainExcerpts) {
+        public Context(List<Evidence> excerpts,List<String> warnings,int totalExcerpts,boolean complete,
+                       List<ink.erro.backend.electrical.ElectricalCalculationService.Calculation> calculations,
+                       List<DocumentAssessmentService.Assessment> assessments) {
+            this(excerpts,warnings,totalExcerpts,complete,calculations,assessments,(int)excerpts.stream().filter(Evidence::incomplete).count());
+        }
         public static Context empty() { return new Context(List.of(), List.of(), 0, true, List.of(),List.of()); }
     }
 }

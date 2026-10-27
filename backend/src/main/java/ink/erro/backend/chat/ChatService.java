@@ -74,7 +74,9 @@ public class ChatService {
         var cited=citations.map(answer,allowedHits);
         var documentCited=citations.documents(cited.reply(),allowedDocuments);
         var warnings=new ArrayList<>(context.warnings()); warnings.addAll(cited.warnings());
-        warnings.addAll(documentContext.warnings()); warnings.addAll(documentCited.warnings());
+        documentContext.warnings().stream().filter(w->input==null || !w.startsWith("Only ")).forEach(warnings::add);
+        if(input!=null && allowedDocuments.size()<documentContext.totalExcerpts()) warnings.add("This answer received "+allowedDocuments.size()+" of "+documentContext.totalExcerpts()+" saved document excerpts. Omitted evidence remains saved; this does not establish that the original is unreadable.");
+        warnings.addAll(documentCited.warnings());
         if(input!=null && input.trimmed()) warnings.add("Some conversation/reference context was omitted for this answer. Your full chat remains saved.");
         var validations=new ArrayList<>(context.validations());
         var candidates=new ArrayList<>(context.products());

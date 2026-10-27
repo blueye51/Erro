@@ -93,8 +93,10 @@ context, never verified electrical input.
 
 `ChatPrompt` caps the final serialized generation input at **32,000 characters**,
 separate from the system instruction/output budget. It removes duplicated query
-text, compacts calculation/product metadata and drops lower-priority context as
-needed. Only evidence actually sent can be cited. Omissions set explicit warnings
+text and duplicate document item JSON, compacts calculation/product metadata,
+and drops older assistant dialogue before document evidence. Whole-document
+questions rotate through pages; final coverage distinguishes omitted from
+uncertain readings. Only evidence actually sent can be cited. Omissions set explicit warnings
 and incomplete document coverage; the complete chat remains in PostgreSQL.
 This is a character budget, not a provider-specific tokenizer or a promise that
 every historical fact is recalled. A new chat isolates unrelated projects.

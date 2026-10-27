@@ -30,7 +30,10 @@ The complete conversation is saved, but it is not blindly resent to the model.
 The server selects recent user messages and relevant older user messages with
 PostgreSQL text search, plus recent dialogue. The generation input is capped at
 32,000 serialized characters, with explicit omission/incomplete flags. Dropping
-context for one answer never deletes saved messages.
+context for one answer never deletes saved messages. Structured document items
+are sent once; document evidence takes priority over older assistant dialogue.
+Coverage distinguishes omitted excerpts from readings with uncertain positions,
+so a prompt limit is not described as an unreadable original drawing.
 
 `userQuestion` is the latest input; `previousUserMessages` contains selected
 chronological technical inputs. `previousConversation` includes recent user and

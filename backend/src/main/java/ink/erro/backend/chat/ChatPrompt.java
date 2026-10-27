@@ -3,6 +3,7 @@ package ink.erro.backend.chat;
 import java.util.*;
 import tools.jackson.databind.json.JsonMapper;
 import ink.erro.backend.document.DocumentModels;
+import ink.erro.backend.document.DocumentEvidence;
 import ink.erro.backend.electrical.*;
 import ink.erro.backend.knowledge.KnowledgeModels.Hit;
 import ink.erro.backend.product.ProductModels.Candidate;
@@ -31,24 +32,31 @@ public final class ChatPrompt {
         reference.put("validations",context.validations());reference.put("assumptions",notes(context.assumptions()));
         reference.put("warnings",notes(context.warnings()));reference.put("missingInformation",notes(context.missingInformation()));
         var doc=new LinkedHashMap<String,Object>();
-        doc.put("warnings",notes(documents.warnings()));doc.put("totalExcerpts",documents.totalExcerpts());
+        doc.put("totalExcerpts",documents.totalExcerpts());
         doc.put("calculations",documents.calculations().stream().map(this::calculation).toList());
         boolean trimmed=false;
         for(int iteration=0;iteration<256;iteration++) {
             reference.put("retrieval",Map.of("hits",hits,"mode",context.retrieval().mode()));reference.put("products",products);
-            doc.put("excerpts",excerpts);doc.put("assessments",assessments.stream().filter(a->excerpts.stream().anyMatch(e->e.id().equals(a.get("evidenceId")))).toList());
+            doc.put("excerpts",excerpts.stream().map(DocumentEvidence::prompt).toList());doc.put("assessments",assessments.stream().filter(a->excerpts.stream().anyMatch(e->e.id().equals(a.get("evidenceId")))).toList());
             doc.put("complete",documents.complete() && excerpts.size()==documents.excerpts().size());
+            doc.put("coverage",Map.of("extractedExcerpts",documents.totalExcerpts(),"suppliedExcerpts",excerpts.size(),
+                    "omittedExcerpts",documents.totalExcerpts()-excerpts.size(),"uncertainExcerpts",documents.uncertainExcerpts(),
+                    "allExtractedEvidenceSupplied",excerpts.size()==documents.totalExcerpts()));
+            var warnings=new ArrayList<String>();
+            if(excerpts.size()<documents.totalExcerpts()) warnings.add("This request includes "+excerpts.size()+" of "+documents.totalExcerpts()+" saved excerpts. The rest remain saved; this is a prompt coverage limit, not proof of source illegibility.");
+            documents.warnings().stream().filter(w->!w.startsWith("Only ")).forEach(warnings::add);
+            doc.put("warnings",notes(warnings));
             String input=json.writeValueAsString(Map.of("userQuestion",question,"previousUserMessages",prior,
                     "previousConversation",dialogue,"referenceData",reference,"documentData",doc,
                     "contextSelection",trimmed?"Some context was omitted to fit this request. Stored history is unchanged; do not claim an exhaustive result.":"Selected recent conversation and retrieved evidence."));
             if(input.length()<=MAX_CHARS) return new Input(input,List.copyOf(hits),List.copyOf(excerpts),trimmed);
             trimmed=true;
-            if(dialogue.size()>2) dialogue.removeFirst();
-            else if(excerpts.size()>1) excerpts.removeLast();
+            if(!dialogue.isEmpty()) dialogue.removeFirst();
             else if(hits.size()>1) hits.removeLast();
             else if(!products.isEmpty()) products.removeLast();
             else if(!assessments.isEmpty()) assessments.removeLast();
-            else if(!dialogue.isEmpty()) dialogue.removeFirst();
+            else if(prior.size()>1) prior.removeFirst();
+            else if(excerpts.size()>1) excerpts.removeLast();
             else if(!prior.isEmpty()) prior.removeFirst();
             else if(!hits.isEmpty()) hits.removeLast();
             else if(!excerpts.isEmpty()) excerpts.removeLast();

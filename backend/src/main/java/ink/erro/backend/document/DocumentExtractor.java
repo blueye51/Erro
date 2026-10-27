@@ -121,7 +121,7 @@ public class DocumentExtractor implements DocumentProcessor {
                     int width = (int)Math.ceil((rotate ? box.getHeight() : box.getWidth()) * scale);
                     int height = (int)Math.ceil((rotate ? box.getWidth() : box.getHeight()) * scale);
                     dimensions(width, height, 160_000_000L);
-                    out.addVision(vision.extract(filename, location, width, height, (x, y, w, h) -> {
+                    out.addVision(vision.extractPage(filename, location, width, height, (x, y, w, h) -> {
                         var image = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
                         var graphics = image.createGraphics();
                         try {
@@ -281,7 +281,8 @@ public class DocumentExtractor implements DocumentProcessor {
         }
         void add(String location, String method, String text, List<Item> items, boolean incomplete) {
             if (text.isBlank()) return;
-            if ((chars += text.length()) > MAX_CHARS) throw DocumentException.invalid("Extracted content exceeds 400,000 characters. Split this document.");
+            int itemChars=items.isEmpty()?0:tools.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(items).length();
+            if ((chars += text.length()+itemChars) > MAX_CHARS) throw DocumentException.invalid("Extracted content exceeds 400,000 characters. Split this document.");
             int offset = 0, part = 0;
             while (offset < text.length()) {
                 int end = Math.min(text.length(), offset + 2200);
@@ -305,14 +306,13 @@ public class DocumentExtractor implements DocumentProcessor {
         void addVision(List<Evidence> values) {
             warnings.add("Visual extraction is unverified: symbol counts are estimates, printed quantities are OCR readings. Verify against originals. Overlapping crops use center ownership; never add diagram quantities to specification quantities for the same equipment.");
             for (var value : values) {
-                if(value.incomplete()) warnings.add(value.location()+": readable visual content was preserved with uncertain locations or structure. Counts and DIN totals cannot be established from these readings; overlapping readings may repeat the same equipment.");
+                if(value.incomplete()) warnings.add(value.location()+": uncertain locations or structure were preserved. Unlocated items cannot be counted; located items remain visual estimates. This does not establish that the original is illegible.");
                 if(value.items().isEmpty()) { add(value.location(),"VISION",value.text(),List.of(),value.incomplete()); continue; }
                 // Smaller groups keep symbol evidence retrievable even on dense pages.
-                var json=tools.jackson.databind.json.JsonMapper.builder().build();
-                String notes=value.text().substring(0,value.text().lastIndexOf('\n'));
                 for(int start=0;start<value.items().size();start+=4) {
                     var group=value.items().subList(start,Math.min(start+4,value.items().size()));
-                    add(value.location()+", items "+(start+1)+"–"+(start+group.size()),"VISION",notes+"\n"+json.writeValueAsString(group),List.copyOf(group),value.incomplete());
+                    String notes=start==0 && !value.text().isBlank()?value.text():"Visual device readings.";
+                    add(value.location()+", items "+(start+1)+"–"+(start+group.size()),"VISION",notes,List.copyOf(group),value.incomplete());
                 }
             }
         }

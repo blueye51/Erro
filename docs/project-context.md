@@ -1,6 +1,6 @@
 # E.R.R.O. project context
 
-Last updated: 2026-10-26
+Last updated: 2026-10-27
 
 ## People and name
 
@@ -60,7 +60,13 @@ one-letter follow-up, refresh restoration and another follow-up. This verifies
 the processing/persistence path, not drawing interpretation or exhaustive quantities.
 Readable visual content remains available with warnings when model-generated
 locations or structure are unreliable. These readings are marked incomplete,
-have no usable item quantities, and cannot establish exhaustive counts/DIN totals.
+have no usable quantities for unlocated items, and cannot establish exhaustive
+counts/DIN totals. Located readings can support a labelled provisional inventory.
+On 2026-10-27 Eric reported that cabinet estimates were refusing on partial
+retrieval. Full-width PDF bands now preserve schedule columns, compact evidence
+reduces omissions, and coverage separates prompt limits from uncertain readings.
+Requested planning estimates may show explicit assumed widths/spare allowances;
+these must never become verified specifications or deterministic technical inputs.
 
 - React/TypeScript/Vite in `web/`, Spring Boot/Java/Maven in `backend/`.
 - The website uses cookie-scoped `/api/guest` and `/api/chats` routes, durable
@@ -140,9 +146,9 @@ is verified locally; Railway migration is not verified. See [Web proxy](web-prox
 Read this context and [Electrical knowledge](knowledge.md) before extending the
 assistant. Keep source authority, law/standards, manufacturer specifications,
 calculation results and generated explanation distinct. Expand the curated corpus
-and tested extraction rules deliberately. Saved chats, visitor accounts, tools,
-permanent PDF/URL knowledge import and purchasing need explicit future scope.
-Temporary document analysis is now authorized and implemented in the active chat.
+and tested extraction rules deliberately. Visitor logins, tools, permanent PDF/URL knowledge import and purchasing need
+explicit future scope. Guest chats and private document analysis are authorized
+and saved in the existing PostgreSQL database.
 
 Eric requires all new work to be documented in `docs/` as part of the change.
 Keep setup, configuration, workflows, decisions and verification notes current;
