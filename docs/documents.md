@@ -92,7 +92,9 @@ user context. It selects up to 96 excerpts within 24,000 serialized characters.
 Whole-document takeoff/estimate questions rotate between pages, preventing a
 long first page from hiding later schedules. A compact projection sends each
 structured item once as a row, with `documentData.itemColumns` declaring the
-column names once for the whole request. Null values stay unknown, never zero. Older saved extractions are compacted on read without changing their
+column names once for the whole request. `documentData.sources` stores repeated
+file/crop metadata once; excerpts reference it and preserve their item-group location
+suffix. The citation mapper still returns the original complete location. Null values stay unknown, never zero. Older saved extractions are compacted on read without changing their
 stored data. New extractions store crop notes once alongside structured items,
 without embedding another copy of the item JSON in prose.
 
@@ -255,3 +257,20 @@ The added citation regression verifies short/grouped IDs, original source/locati
 mapping, rejection of unsupplied IDs and separation from the legacy UUID contract.
 The legacy endpoint keeps its original raw-evidence size limit; column compression
 and the 96-excerpt limit apply to saved chat generation.
+
+A second live run returned working citations across all three pages, but supplied
+33 of 38 stored excerpts and still made unsupported quantity/cabinet-allocation
+assumptions. The next correction shares repeated file/crop metadata within the
+same 24,000-character document budget, without discarding readings or changing
+the 32,000-character generation cap. The dense regression now includes 156 items
+across 39 excerpts and 12 crop regions. Estimate instructions require supporting
+device references for counts and distinguish feeder destinations from cabinet
+boundaries; prompt guidance alone does not establish takeoff accuracy.
+
+This correction passed 103 Maven tests with no skips on disposable PostgreSQL,
+then a focused prompt-packing check after the final wording change. Both native
+browser suites passed saved-document follow-ups, one-letter messages, refresh,
+errors, deletion, guest isolation and responsive layouts. Compose configuration
+passed; Docker builds/database runner/startup verification remain blocked by the
+unavailable local Docker engine. No frontend, database schema or AI output-budget
+change was needed. The live provider check is recorded separately below.

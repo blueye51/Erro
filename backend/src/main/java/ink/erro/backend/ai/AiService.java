@@ -102,8 +102,11 @@ public class AiService {
 
     private String extractReply(JsonNode response) {
         if (response == null || !"completed".equals(response.path("status").asText())) {
+            if(response!=null && "max_output_tokens".equals(response.path("incomplete_details").path("reason").asText()))
+                throw new AiException(HttpStatus.BAD_GATEWAY,
+                        "The answer reached the response length limit. Ask for a concise answer or one section at a time.");
             throw new AiException(HttpStatus.BAD_GATEWAY,
-                    "The AI could not finish the reply. Please try a shorter message.");
+                    "The AI did not complete the reply. Please try again.");
         }
         var parts = new ArrayList<String>();
         for (var item : response.path("output")) {

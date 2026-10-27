@@ -170,6 +170,20 @@ class ChatApiTest {
     }
 
     @Test
+    void responseLimitDoesNotBlameInputLengthOrPublishPartialTechnicalAnswer() throws Exception {
+        providerBody="""
+                {"status":"incomplete","incomplete_details":{"reason":"max_output_tokens"},
+                 "output":[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"Unfinished cabinet estimate"}]}]}
+                """;
+        var response=mvc.perform(post("/api/chat").contentType(MediaType.APPLICATION_JSON).content("{\"message\":\"a\"}"))
+                .andExpect(status().isBadGateway()).andReturn().getResponse().getContentAsString();
+        assertThat(response).contains("response length limit").doesNotContain("shorter message","Unfinished cabinet estimate");
+        providerBody="{\"status\":\"incomplete\"}";
+        mvc.perform(post("/api/chat").contentType(MediaType.APPLICATION_JSON).content("{\"message\":\"a\"}"))
+                .andExpect(status().isBadGateway()).andExpect(jsonPath("$.error").value("The AI did not complete the reply. Please try again."));
+    }
+
+    @Test
     void returnsRefusalAsAnAssistantReply() throws Exception {
         providerBody = """
                 {"status":"completed","output":[{"type":"message","role":"assistant",
@@ -252,7 +266,7 @@ class ChatApiTest {
         assertThat(envelope.path("userQuestion").asText()).isEqualTo(question.strip());
         assertThat(envelope.path("previousUserMessages").get(0).asText()).isEqualTo(previous.get(0));
         assertThat(envelope.path("previousUserMessages").get(1).asText()).isEqualTo(previous.get(1));
-        assertThat(providerRequest.path("instructions").asText()).contains("Answer userQuestion as the latest message", "Prior assistant replies are not supplied");
+        assertThat(providerRequest.path("instructions").asText()).contains("Answer userQuestion as the latest message", "Selected prior assistant replies may appear in previousConversation for continuity");
         assertThat(providerRequest.path("store").asBoolean()).isFalse();
         assertThat(providerRequest.has("previous_response_id")).isFalse();
 

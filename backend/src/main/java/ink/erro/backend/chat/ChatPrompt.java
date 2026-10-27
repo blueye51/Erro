@@ -38,9 +38,7 @@ public final class ChatPrompt {
         boolean trimmed=false;
         for(int iteration=0;iteration<256;iteration++) {
             reference.put("retrieval",Map.of("hits",hits,"mode",context.retrieval().mode()));reference.put("products",products);
-            var supplied=new ArrayList<Map<String,Object>>();
-            for(int i=0;i<excerpts.size();i++) supplied.add(DocumentEvidence.prompt(excerpts.get(i),"D"+(i+1)));
-            doc.put("excerpts",supplied);
+            doc.putAll(DocumentEvidence.promptBatch(excerpts));
             doc.put("assessments",assessments.stream().filter(a->excerpts.stream().anyMatch(e->e.id().equals(a.get("evidenceId")))).map(a->{
                 var value=new LinkedHashMap<>(a);
                 for(int i=0;i<excerpts.size();i++) if(excerpts.get(i).id().equals(a.get("evidenceId"))) value.put("evidenceId","D"+(i+1));
@@ -56,7 +54,7 @@ public final class ChatPrompt {
             doc.put("warnings",notes(warnings));
             String input=json.writeValueAsString(Map.of("userQuestion",question,"previousUserMessages",prior,
                     "previousConversation",dialogue,"referenceData",reference,"documentData",doc,
-                    "contextSelection",trimmed?"Some context was omitted to fit this request. Stored history is unchanged; do not claim an exhaustive result.":"Selected recent conversation and retrieved evidence."));
+                    "contextSelection",trimmed?"Some conversation/reference context was omitted to fit this request. Stored history is unchanged. Use documentData.coverage for document coverage.":"Selected recent conversation and retrieved evidence."));
             if(input.length()<=MAX_CHARS) return new Input(input,List.copyOf(hits),List.copyOf(excerpts),trimmed);
             trimmed=true;
             if(!dialogue.isEmpty()) dialogue.removeFirst();

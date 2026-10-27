@@ -53,8 +53,11 @@ public class DocumentContextService {
         } else for (var e : ranked) selected.putIfAbsent(e.id(),e);
         int size = 2+json.writeValueAsString(DocumentEvidence.ITEM_COLUMNS).length(); var bounded = new ArrayList<Evidence>();
         for (var e : selected.values()) {
-            int length = json.writeValueAsString(compactPrompt?DocumentEvidence.prompt(e,"D"+(bounded.size()+1)):e).length()+(bounded.isEmpty()?0:1);
-            if (bounded.size() < (compactPrompt?MAX_EXCERPTS:24) && size + length <= MAX_CONTEXT) { bounded.add(e); size += length; }
+            if(bounded.size()>=(compactPrompt?MAX_EXCERPTS:24)) break;
+            var candidate=new ArrayList<>(bounded);candidate.add(e);
+            int candidateSize=compactPrompt?json.writeValueAsString(DocumentEvidence.promptBatch(candidate)).length():
+                    size+json.writeValueAsString(e).length()+(bounded.isEmpty()?0:1);
+            if (candidateSize <= MAX_CONTEXT) { bounded.add(e); size=candidateSize; }
         }
         boolean fullyRetrieved = bounded.size() == all.size();
         int uncertainExcerpts=(int)all.stream().filter(Evidence::incomplete).count();

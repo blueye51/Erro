@@ -74,7 +74,11 @@ Compose; `CHAT_GUEST_TTL` defaults to 365 days. See the [guest guide](guest-chat
 for complete endpoints, cookie/deletion behavior, schema and processing leases.
 
 Provider error bodies/keys are not returned or logged. Reply errors become safe
-FAILED request records. Parser, database, authorization and quota errors retain
+FAILED request records. A provider-reported `max_output_tokens` interruption
+explicitly identifies the response length limit and suggests a concise answer
+or one section. Other incomplete replies suggest retrying; neither is presented
+as proof that the user message or stored chat is too long. Partial technical
+answers are not published. Output budgets/configuration remain unchanged. Parser, database, authorization and quota errors retain
 safe `{error: ...}` responses. A deterministic electrical FAIL can still answer
 without a configured model.
 

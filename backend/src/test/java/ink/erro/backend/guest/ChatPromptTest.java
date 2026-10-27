@@ -15,8 +15,10 @@ class ChatPromptTest {
         for(int i=0;i<39;i++) {
             var items=List.of(
                     new DocumentModels.Item("Q"+i,"C16 breaker; XPJ-HF D 5G6; readable diagram and matching schedule row",java.math.BigDecimal.ONE,"pcs","VISION_SYMBOL_COUNT",null,""),
-                    new DocumentModels.Item("M"+i,"Meter, 3x230/400 V; exact model and mounting width not printed",java.math.BigDecimal.ONE,"pcs","VISION_SYMBOL_COUNT",null,""));
-            evidence.add(new DocumentModels.Evidence("D-"+UUID.randomUUID(),"panel.pdf","Page "+(i/13+1)+", group "+i,"VISION",
+                    new DocumentModels.Item("M"+i,"Meter, 3x230/400 V; exact model and mounting width not printed",java.math.BigDecimal.ONE,"pcs","VISION_SYMBOL_COUNT",null,""),
+                    new DocumentModels.Item("R"+i,"Type A RCD, In 25A, residual current 30mA; one physical device",java.math.BigDecimal.ONE,"pcs","VISION_SYMBOL_COUNT",null,""),
+                    new DocumentModels.Item("K"+i,"Contactor In 25A; circuit reference and pole notation unresolved",null,"pcs","VISION_UNLOCATED",null,""));
+            evidence.add(new DocumentModels.Evidence("D-"+UUID.randomUUID(),"26004_PP_EL-7-01_v01_Peakilp.pdf","Page "+(i/13+1)+", region x=0..1654, y="+((i%13)/4*647)+".."+Math.min(2339,((i%13)/4+1)*647)+" (1654×2339 px), items "+(i*4+1)+"–"+(i*4+4)+", part 1","VISION",
                     "Check original drawing\n"+json.writeValueAsString(items),items));
         }
         var assessment=org.mockito.Mockito.mock(ink.erro.backend.document.DocumentAssessmentService.class);
@@ -38,7 +40,16 @@ class ChatPromptTest {
         assertThat(data.path("itemColumns").get(5).asText()).isEqualTo("modulesEach");
         assertThat(data.path("excerpts").get(0).path("items").get(0).get(5).isNull()).isTrue();
         assertThat(data.path("excerpts").get(0).path("items").get(0).get(2).asInt()).isEqualTo(1);
-        assertThat(result.excerpts().stream().flatMap(e->e.items().stream())).hasSize(78);
+        assertThat(result.excerpts().stream().flatMap(e->e.items().stream())).hasSize(156);
+        assertThat(data.path("sources").size()).isEqualTo(12);
+        for(int i=0;i<39;i++) {
+            var excerpt=data.path("excerpts").get(i);
+            var source=data.path("sources").path(excerpt.path("source").asText());
+            assertThat(source.path("filename").asText()).isEqualTo(result.excerpts().get(i).filename());
+            assertThat(source.path("location").asText()+excerpt.path("locationSuffix").asText()).isEqualTo(result.excerpts().get(i).location());
+            assertThat(excerpt.path("items").get(3).get(2).isNull()).isTrue();
+            assertThat(excerpt.path("items").get(3).get(4).asText()).isEqualTo("VISION_UNLOCATED");
+        }
     }
     @Test void savedHistoryAndLargeDocumentsCannotFillTheGenerationRequest() {
         var parameters=new ElectricalParameterExtractor().extract("400 V");
