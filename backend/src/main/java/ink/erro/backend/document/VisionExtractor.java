@@ -37,9 +37,14 @@ public class VisionExtractor {
         One entry per physical symbol or schedule row. Never return totals across symbols/crops.
         Keep descriptions concise, but preserve the complete circuit reference, device type, printed pole notation,
         ratings, cable designation/cross-section and associations between diagram symbols and table rows.
+        Prefer compact labels such as "MCB C16 3P; cable XPK HF D 5G2,5" over explanatory sentences.
+        Put general caveats once in notes, not on every device. Do not repeat that DIN widths are unstated in each description.
         Do not emit a second device just because its symbol also has a matching schedule row.
         Read meters, main switches, surge protection, breakers, RCDs/RCBOs, contactors, timers and terminal bars where visible.
         A circuit may contain several distinct devices: identify each device's role without calling the circuit number a quantity.
+        Attach related ratings to the SAME device. For example Type A, In=25A and I-delta-n=30mA may all label one RCD,
+        not three devices. A matching RCD symbol and the table's RCD rating line are the same observation.
+        Distinguish a combined RCBO symbol from a separate breaker plus RCD; if unclear, retain that ambiguity instead of counting both.
         Keep specifications/title-block fields as notes rather than inventing physical devices for each field.
         Distinguish a crop boundary from genuinely illegible source text; do not call omitted columns unreadable.
         A visible symbol has quantity 1, basis SYMBOL_COUNT. LISTED requires an explicit printed quantity.

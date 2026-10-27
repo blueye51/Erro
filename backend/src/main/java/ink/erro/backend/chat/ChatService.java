@@ -72,7 +72,7 @@ public class ChatService {
                 && context.validations().stream().anyMatch(c->c.rule().equals("protection-system")))
             answer="There is not enough verified information to select protection safely. Load current alone does not determine a breaker rating.\n\n"+answer;
         var cited=citations.map(answer,allowedHits);
-        var documentCited=citations.documents(cited.reply(),allowedDocuments);
+        var documentCited=citations.documents(cited.reply(),allowedDocuments,saved);
         var warnings=new ArrayList<>(context.warnings()); warnings.addAll(cited.warnings());
         documentContext.warnings().stream().filter(w->input==null || !w.startsWith("Only ")).forEach(warnings::add);
         if(input!=null && allowedDocuments.size()<documentContext.totalExcerpts()) warnings.add("This answer received "+allowedDocuments.size()+" of "+documentContext.totalExcerpts()+" saved document excerpts. Omitted evidence remains saved; this does not establish that the original is unreadable.");

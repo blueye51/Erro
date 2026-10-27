@@ -11,16 +11,24 @@ public class CitationMapper {
     public record DocumentSource(String id,String filename,String location,String method) {}
     public record DocumentAnswer(String reply,List<DocumentSource> sources,List<String> warnings) {}
     public DocumentAnswer documents(String answer,List<ink.erro.backend.document.DocumentModels.Evidence> evidence) {
-        var allowed=new HashMap<String,ink.erro.backend.document.DocumentModels.Evidence>(); evidence.forEach(e->allowed.put(e.id(),e));
+        return documents(answer,evidence,false);
+    }
+    public DocumentAnswer documents(String answer,List<ink.erro.backend.document.DocumentModels.Evidence> evidence,boolean aliases) {
+        var allowed=new HashMap<String,ink.erro.backend.document.DocumentModels.Evidence>();
+        for(int i=0;i<evidence.size();i++) allowed.put(aliases?"D"+(i+1):evidence.get(i).id(),evidence.get(i));
         var used=new LinkedHashMap<String,DocumentSource>(); var warnings=new ArrayList<String>();
-        var matcher=Pattern.compile("\\[(D-[^\\]\\s]+)\\]").matcher(answer); var result=new StringBuilder();
+        var matcher=Pattern.compile("\\[(D(?:\\d|-)[^\\]]*)\\]").matcher(answer); var result=new StringBuilder();
         while(matcher.find()) {
-            var e=allowed.get(matcher.group(1));
-            if(e==null) { matcher.appendReplacement(result,""); warnings.add("An unsupported document citation was removed."); }
-            else {
-                used.putIfAbsent(e.id(),new DocumentSource(e.id(),e.filename(),e.location(),e.method()));
-                matcher.appendReplacement(result,"[Document "+(new ArrayList<>(used.keySet()).indexOf(e.id())+1)+"]");
+            var replacement=new StringBuilder();
+            for(String id:matcher.group(1).split("[,;\\s]+")) {
+                var e=allowed.get(id);
+                if(e==null) warnings.add("An unsupported document citation was removed.");
+                else {
+                    used.putIfAbsent(e.id(),new DocumentSource(e.id(),e.filename(),e.location(),e.method()));
+                    replacement.append("[Document ").append(new ArrayList<>(used.keySet()).indexOf(e.id())+1).append("]");
+                }
             }
+            matcher.appendReplacement(result,java.util.regex.Matcher.quoteReplacement(replacement.toString()));
         }
         matcher.appendTail(result);
         return new DocumentAnswer(result.toString(),List.copyOf(used.values()),warnings.stream().distinct().toList());

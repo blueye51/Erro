@@ -34,7 +34,10 @@ class ChatPromptTest {
         assertThat(data.path("coverage").path("allExtractedEvidenceSupplied").asBoolean()).isTrue();
         assertThat(data.path("coverage").path("omittedExcerpts").asInt()).isZero();
         assertThat(data.path("excerpts").get(0).path("text").asText()).isEqualTo("Check original drawing");
-        assertThat(data.path("excerpts").get(0).path("items").get(0).has("modulesEach")).isFalse();
+        assertThat(data.path("excerpts").get(0).path("id").asText()).isEqualTo("D1");
+        assertThat(data.path("itemColumns").get(5).asText()).isEqualTo("modulesEach");
+        assertThat(data.path("excerpts").get(0).path("items").get(0).get(5).isNull()).isTrue();
+        assertThat(data.path("excerpts").get(0).path("items").get(0).get(2).asInt()).isEqualTo(1);
         assertThat(result.excerpts().stream().flatMap(e->e.items().stream())).hasSize(78);
     }
     @Test void savedHistoryAndLargeDocumentsCannotFillTheGenerationRequest() {

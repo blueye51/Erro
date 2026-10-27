@@ -19,9 +19,12 @@ public class DocumentContextService {
     public Context retrieve(String token, List<String> ids, String question) {
         if (ids == null || ids.isEmpty()) return Context.empty();
         var files = store.read(token,ids);
-        return fromExtractions(files,question);
+        return fromExtractions(files,question,false);
     }
     public Context fromExtractions(List<Extraction> files,String question) {
+        return fromExtractions(files,question,true);
+    }
+    private Context fromExtractions(List<Extraction> files,String question,boolean compactPrompt) {
         if(files.isEmpty()) return Context.empty();
         var all = files.stream().flatMap(f -> f.evidence().stream()).map(DocumentEvidence::compact).toList();
         var warnings = new LinkedHashSet<String>(); files.forEach(f -> warnings.addAll(f.warnings()));
@@ -48,10 +51,10 @@ public class DocumentContextService {
             while(pages.values().stream().anyMatch(p->!p.isEmpty())) for(var page:pages.values())
                 if(!page.isEmpty()) { var e=page.removeFirst();selected.putIfAbsent(e.id(),e); }
         } else for (var e : ranked) selected.putIfAbsent(e.id(),e);
-        int size = 2; var bounded = new ArrayList<Evidence>();
+        int size = 2+json.writeValueAsString(DocumentEvidence.ITEM_COLUMNS).length(); var bounded = new ArrayList<Evidence>();
         for (var e : selected.values()) {
-            int length = json.writeValueAsString(DocumentEvidence.prompt(e)).length()+(bounded.isEmpty()?0:1);
-            if (bounded.size() < MAX_EXCERPTS && size + length <= MAX_CONTEXT) { bounded.add(e); size += length; }
+            int length = json.writeValueAsString(compactPrompt?DocumentEvidence.prompt(e,"D"+(bounded.size()+1)):e).length()+(bounded.isEmpty()?0:1);
+            if (bounded.size() < (compactPrompt?MAX_EXCERPTS:24) && size + length <= MAX_CONTEXT) { bounded.add(e); size += length; }
         }
         boolean fullyRetrieved = bounded.size() == all.size();
         int uncertainExcerpts=(int)all.stream().filter(Evidence::incomplete).count();

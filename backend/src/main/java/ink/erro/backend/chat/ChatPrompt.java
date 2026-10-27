@@ -33,11 +33,19 @@ public final class ChatPrompt {
         reference.put("warnings",notes(context.warnings()));reference.put("missingInformation",notes(context.missingInformation()));
         var doc=new LinkedHashMap<String,Object>();
         doc.put("totalExcerpts",documents.totalExcerpts());
+        doc.put("itemColumns",DocumentEvidence.ITEM_COLUMNS);
         doc.put("calculations",documents.calculations().stream().map(this::calculation).toList());
         boolean trimmed=false;
         for(int iteration=0;iteration<256;iteration++) {
             reference.put("retrieval",Map.of("hits",hits,"mode",context.retrieval().mode()));reference.put("products",products);
-            doc.put("excerpts",excerpts.stream().map(DocumentEvidence::prompt).toList());doc.put("assessments",assessments.stream().filter(a->excerpts.stream().anyMatch(e->e.id().equals(a.get("evidenceId")))).toList());
+            var supplied=new ArrayList<Map<String,Object>>();
+            for(int i=0;i<excerpts.size();i++) supplied.add(DocumentEvidence.prompt(excerpts.get(i),"D"+(i+1)));
+            doc.put("excerpts",supplied);
+            doc.put("assessments",assessments.stream().filter(a->excerpts.stream().anyMatch(e->e.id().equals(a.get("evidenceId")))).map(a->{
+                var value=new LinkedHashMap<>(a);
+                for(int i=0;i<excerpts.size();i++) if(excerpts.get(i).id().equals(a.get("evidenceId"))) value.put("evidenceId","D"+(i+1));
+                return value;
+            }).toList());
             doc.put("complete",documents.complete() && excerpts.size()==documents.excerpts().size());
             doc.put("coverage",Map.of("extractedExcerpts",documents.totalExcerpts(),"suppliedExcerpts",excerpts.size(),
                     "omittedExcerpts",documents.totalExcerpts()-excerpts.size(),"uncertainExcerpts",documents.uncertainExcerpts(),

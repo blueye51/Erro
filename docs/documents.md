@@ -91,8 +91,8 @@ Document retrieval ranks relevant excerpts for the latest question and active
 user context. It selects up to 96 excerpts within 24,000 serialized characters.
 Whole-document takeoff/estimate questions rotate between pages, preventing a
 long first page from hiding later schedules. A compact projection sends each
-structured item once and omits unknown/empty fields; omitted values mean unknown,
-never zero. Older saved extractions are compacted on read without changing their
+structured item once as a row, with `documentData.itemColumns` declaring the
+column names once for the whole request. Null values stay unknown, never zero. Older saved extractions are compacted on read without changing their
 stored data. New extractions store crop notes once alongside structured items,
 without embedding another copy of the item JSON in prose.
 
@@ -103,7 +103,11 @@ omitted and uncertain excerpt counts separately. Its counts reflect the final
 packed prompt. `complete=false` alone does not establish source illegibility.
 Partial retrieval cannot establish an exhaustive material list, but readable
 located devices can still support a provisional inventory/subtotal. Only IDs
-actually supplied to generation can become `[Document n]` citations.
+actually supplied to generation can become `[Document n]` citations. Saved chat
+prompts use short per-request IDs (`D1`, `D2`, …), mapped back to the original
+source IDs and locations after generation. This avoids unreliable abbreviated
+UUID citations. Unsupported IDs are rejected; grouped valid citations are mapped
+individually. Legacy requests retain their full-ID citation contract.
 Both document and knowledge data are untrusted input, never system instructions.
 
 Terms assist existing knowledge search. Up to six directly extracted excerpts
@@ -233,3 +237,21 @@ Verification before deployment:
   runner and Compose startup checks remained unavailable because WSL integration
   and the Windows engine pipe were unavailable. Native checks used JDK 25,
   PostgreSQL 16 and Nginx 1.24; production-image verification remains distinct.
+
+The first live estimate check exposed two further issues: the model abbreviated
+UUID citations, and treated an RCD's Type A/25 A annotation as another device
+beside its 30 mA symbol. The saved prompt now uses columnar item rows and short
+citation aliases. Extraction/generation instructions explicitly reconcile device
+ratings, matched symbols/schedule rows and combined RCBOs before estimating.
+A type, rated current and residual sensitivity can describe one device, as shown
+by the manufacturer's [RCCB product description](https://www.se.com/nl/en/product/A9R01425/residual-current-circuit-breaker-rccb-acti9-iid-4p-25a-a-type-30ma/).
+That example is not an identification of the project hardware, and no product
+width or catalog entry was inferred from it. Provisional layouts must have enough
+row capacity for the proposed total; panel names do not establish mounting style.
+
+The follow-up change passed all 102 Maven tests without skips on disposable
+PostgreSQL, both native browser suites, and the packaged document-worker check.
+The added citation regression verifies short/grouped IDs, original source/location
+mapping, rejection of unsupplied IDs and separation from the legacy UUID contract.
+The legacy endpoint keeps its original raw-evidence size limit; column compression
+and the 96-excerpt limit apply to saved chat generation.

@@ -324,6 +324,16 @@ class DocumentTest {
         assertThat(result.sources()).hasSize(1); assertThat(result.reply()).contains("[Document 1]").doesNotContain("invented");
         assertThat(result.warnings()).isNotEmpty();
     }
+    @Test void shortAndGroupedCitationsMapOnlyToTheActualSuppliedEvidence() {
+        var one=new Evidence("D-"+UUID.randomUUID(),"panel.pdf","Page 2","VISION","C16",List.of());
+        var two=new Evidence("D-"+UUID.randomUUID(),"panel.pdf","Page 3","VISION","B16",List.of());
+        var mapper=new CitationMapper();
+        var answer=mapper.documents("Devices [D1, D2] and again [D1]. Invalid [D99] [D-… coverage warning]",List.of(one,two),true);
+        assertThat(answer.sources()).extracting(CitationMapper.DocumentSource::id).containsExactly(one.id(),two.id());
+        assertThat(answer.reply()).contains("[Document 1][Document 2]","again [Document 1]").doesNotContain("D99","coverage warning");
+        assertThat(mapper.documents("Old UUID ["+one.id()+"]",List.of(one),true).sources()).isEmpty();
+        assertThat(mapper.documents("Invented short ID [D1]",List.of(one)).sources()).isEmpty();
+    }
     @Test void missingOrUnreadableTableQuantitiesWithholdTotals() throws Exception {
         for (String quantity : List.of("", "unknown", "2-3")) {
             try (var scoped = new CloseableStore(new DocumentStore(extractor, properties))) {
@@ -355,7 +365,9 @@ class DocumentTest {
         assertThat(result.excerpts().getFirst().id()).isEqualTo(target.id());
         assertThat(result.excerpts()).hasSizeLessThanOrEqualTo(24);
         var json=tools.jackson.databind.json.JsonMapper.builder().build();
-        assertThat(json.writeValueAsString(result.excerpts().stream().map(DocumentEvidence::prompt).toList()).length()).isLessThanOrEqualTo(24000);
+        var supplied=new ArrayList<Map<String,Object>>();
+        for(int i=0;i<result.excerpts().size();i++) supplied.add(DocumentEvidence.prompt(result.excerpts().get(i),"D"+(i+1)));
+        assertThat(json.writeValueAsString(supplied).length()+json.writeValueAsString(DocumentEvidence.ITEM_COLUMNS).length()).isLessThanOrEqualTo(24000);
         assertThat(result.complete()).isFalse();assertThat(result.warnings()).anyMatch(w->w.contains("partial retrieval"));
     }
     @Test void exactCatalogPartSuppliesDinWidthAndReusesValidation() throws Exception {
