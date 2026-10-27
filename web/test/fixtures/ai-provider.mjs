@@ -44,6 +44,12 @@ http.createServer(async (request, response) => {
     response.writeHead(503)
     return response.end(JSON.stringify({ error: 'Fixture upstream failure' }))
   }
+  if (input.userQuestion.includes('test-long-reply')) {
+    // Reproduce a provider truncation if the old reply budget returns.
+    if (envelope.max_output_tokens < 8192) return response.end(JSON.stringify({ status: 'incomplete', incomplete_details: { reason: 'max_output_tokens' } }))
+    const text = Array.from({ length: 60 }, (_, index) => `### Reading section ${index + 1}\n\nThis is a long response fixture for checking paragraph readability, scrolling, and saved conversation restoration. These are interface test observations, not electrical specifications or equipment recommendations.`).join('\n\n')
+    return response.end(JSON.stringify({ status: 'completed', output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text }] }] }))
+  }
   const id = input.referenceData.retrieval.hits[0]?.source.id
   const document = input.documentData?.excerpts[0]?.id
   const text = input.userQuestion.includes('test-table') ? tableReply : `**Engineering reply.** Confirm the nameplate and protection coordination.${id ? ` [${id}]` : ''}${document ? ` [${document}]` : ''}\n\n- Review the supplied conditions.\n- Resolve the missing information.`

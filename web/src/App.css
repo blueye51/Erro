@@ -70,7 +70,7 @@
   line-height: 1.08;
 }
 h1 em { color: var(--green); font-weight: 400; }
-.chat-workspace { width: min(820px, calc(100% - 48px)); margin-inline: auto; }
+.chat-workspace { width: min(1120px, calc(100% - 64px)); margin-inline: auto; }
 .chat-content.is-empty { padding-block: clamp(40px, 7vh, 84px) 36px; }
 .chat-welcome { text-align: center; }
 .chat-welcome .eyebrow { justify-content: center; }
@@ -113,7 +113,6 @@ h1 em { color: var(--green); font-weight: 400; }
 .chat-composer { box-shadow: 0 5px 22px #243e2c06; }
 .chat-status { text-align: center; }
 .has-messages .chat-composer { flex-shrink: 0; margin-top: 14px; }
-.has-messages .chat-composer textarea { min-height: 60px; }
 .button {
   display: inline-flex;
   align-items: center;
@@ -141,15 +140,15 @@ h1 em { color: var(--green); font-weight: 400; }
 .chat-composer textarea {
   display: block;
   width: 100%;
-  min-height: 84px;
+  min-height: 136px;
   padding: 0;
-  max-height: 240px;
+  max-height: min(440px, 50dvh);
   resize: vertical;
   border: 0;
   outline: none;
   background: transparent;
   color: #28372f;
-  font-size: 16px;
+  font-size: 17px;
   line-height: 1.6;
 }
 .chat-composer textarea::placeholder {
@@ -202,13 +201,14 @@ h1 em { color: var(--green); font-weight: 400; }
   line-height: 1.7;
 }
 .message-list {
-  flex: 1 0 160px;
-  min-height: 160px;
-  max-height: max(240px, calc(100dvh - 540px));
-  padding: 12px 14px 4px 0;
+  flex: none;
+  height: clamp(320px, 64dvh, 900px);
+  min-height: 320px;
+  padding: 20px 24px 12px 4px;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
+  scrollbar-gutter: stable;
 }
 .message {
   min-width: 0;
@@ -228,11 +228,11 @@ h1 em { color: var(--green); font-weight: 400; }
 .message-author {
   margin-bottom: 9px;
   color: var(--green);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 650;
 }
 .message-body {
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.8;
   overflow-wrap: anywhere;
 }
@@ -240,17 +240,20 @@ h1 em { color: var(--green); font-weight: 400; }
   white-space: pre-wrap;
 }
 .message-body > * + * {
-  margin-top: 12px;
+  margin-top: 16px;
 }
+.message-body > :is(p, ul, ol, blockquote) { max-width: 80ch; }
 .message-body h1,
 .message-body h2,
 .message-body h3 {
   font-family: inherit;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
   letter-spacing: 0;
   line-height: 1.5;
 }
+.message-body h1 { font-size: 26px; }
+.message-body h2 { font-size: 23px; }
 .message-body ul,
 .message-body ol {
   padding-left: 24px;
@@ -266,7 +269,7 @@ h1 em { color: var(--green); font-weight: 400; }
 .message-body code {
   border-radius: 3px;
   background: #e4eadf;
-  font-size: 12px;
+  font-size: 14px;
 }
 .message-list:focus-visible,
 .message-table:focus-visible,
@@ -286,7 +289,7 @@ h1 em { color: var(--green); font-weight: 400; }
   min-width: 28rem;
   border-collapse: collapse;
   background: #fff;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.65;
 }
 .message-table th,
@@ -466,6 +469,7 @@ h1 em { color: var(--green); font-weight: 400; }
   .chat-intro { max-width: 400px; font-size: 14px; margin-block: 18px 26px; }
   .chat-composer { padding: 16px; }
   .chat-content.has-messages { min-height: max(490px, calc(100dvh - 149px)); padding-top: 20px; }
+  .message-list { padding-inline: 0 10px; height: clamp(320px, 60dvh, 700px); }
   .starter-prompts { grid-template-columns: 1fr; gap: 8px; margin-top: 24px; }
   .starter-prompts button { padding: 14px 16px; }
   .starter-description { margin-top: 4px; }

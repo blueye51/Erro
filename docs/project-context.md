@@ -67,6 +67,11 @@ retrieval. Full-width PDF bands now preserve schedule columns, compact evidence
 reduces omissions, and coverage separates prompt limits from uncertain readings.
 Requested planning estimates may show explicit assumed widths/spare allowances;
 these must never become verified specifications or deterministic technical inputs.
+Later that day Eric requested longer replies and a larger, more readable chat.
+The default response allowance is now 8,192 tokens, independently of bounded AI
+inputs and full stored history. The chat has a wider transcript, larger text and
+a growing multiline composer. Existing production output-limit overrides need
+the same update; see [Chat configuration](chat.md#configuration).
 
 - React/TypeScript/Vite in `web/`, Spring Boot/Java/Maven in `backend/`.
 - The website uses cookie-scoped `/api/guest` and `/api/chats` routes, durable

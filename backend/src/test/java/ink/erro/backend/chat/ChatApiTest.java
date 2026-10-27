@@ -125,7 +125,7 @@ class ChatApiTest {
         assertThat(mapper.readTree(second.path("input").asText()).path("userQuestion").asText()).isEqualTo("Second message");
         assertThat(second.path("store").asBoolean()).isFalse();
         assertThat(second.path("model").asText()).isEqualTo("deepseek-flash");
-        assertThat(second.path("max_output_tokens").asInt()).isEqualTo(2048);
+        assertThat(second.path("max_output_tokens").asInt()).isEqualTo(8192);
         assertThat(second.path("reasoning").path("effort").asText()).isEqualTo("none");
         assertThat(second.size()).isEqualTo(6);
         assertThat(second.path("instructions").asText()).contains("Never select a breaker", "untrusted reference DATA");
@@ -220,6 +220,7 @@ class ChatApiTest {
         var request = JsonMapper.builder().build().readTree(requests.remove());
         assertThat(request.has("reasoning")).isFalse();
         assertThat(request.path("input").asText()).isEqualTo("Hello");
+        assertThat(request.path("max_output_tokens").asInt()).isEqualTo(2048);
         assertThat(request.path("store").asBoolean()).isFalse();
         assertThat(request.size()).isEqualTo(5);
     }

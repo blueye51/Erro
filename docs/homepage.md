@@ -38,6 +38,15 @@ for controls and errors so the footer does not overlap the mobile composer.
 - **Knowledge management** remains available in the footer at `/#knowledge`, with
   backend token protection. Leaving that view unmounts its token state.
 
+The chat occupies a wider main reading area (up to 1120px). Conversation text is
+17px with increased paragraph spacing and distinct heading sizes; prose keeps a
+readable line length while tables can use the full width. The transcript gets
+about 60–64% of the viewport height instead of a small fixed remainder. New and
+restored answers open at the beginning of the latest reply. The five-line composer
+grows with the draft up to 440px/half the viewport, then scrolls; clearing or sending
+shrinks it again. Resizing the screen recalculates its height without changing
+the draft. The page can scroll to reach the composer and footer on smaller screens.
+
 The chat occupies the main reading area. During a conversation, messages scroll
 within that area while the composer remains below them. Smaller screens use
 stacked starter prompts and compact navigation. The layout uses dynamic viewport

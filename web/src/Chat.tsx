@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useSavedChat } from './useSavedChat'
@@ -22,13 +22,31 @@ export function Chat({ active }: { active: boolean }) {
   const attachments = useAttachments(saved.chatId, saved.session?.csrfToken, saved.files)
   const [dragging, setDragging] = useState(false)
 
+  useLayoutEffect(() => {
+    const field = composer.current
+    if (!active || !field) return
+    const resize = () => {
+      field.style.height = 'auto'
+      field.style.height = `${field.scrollHeight}px`
+    }
+    resize()
+    window.addEventListener('resize', resize)
+    return () => window.removeEventListener('resize', resize)
+  }, [draft, active])
+
   useEffect(() => {
     const log = messageList.current
     if (log && olderScroll.current) {
       log.scrollTop = olderScroll.current.top + log.scrollHeight - olderScroll.current.height
       olderScroll.current = null; return
     }
-    if (active) log?.scrollTo({ top: log.scrollHeight })
+    if (!active || !log) return
+    const latestReply = !pending && messages.at(-1)?.role === 'assistant'
+      ? log.querySelector<HTMLElement>('.message-assistant:last-of-type') : null
+    log.scrollTo({ top: latestReply
+      ? log.scrollTop + latestReply.getBoundingClientRect().top - log.getBoundingClientRect().top
+      : log.scrollHeight })
+    if (latestReply) log.scrollIntoView({ block: 'nearest', behavior: 'instant' })
   }, [messages, pending, active])
 
   async function submitMessage() {
@@ -155,7 +173,7 @@ export function Chat({ active }: { active: boolean }) {
         </label>
         <textarea
           id="message"
-          rows={3}
+          rows={5}
           placeholder="Describe your project or ask about a component…"
           ref={composer}
           value={draft}

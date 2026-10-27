@@ -61,10 +61,20 @@ skipped, image Markdown becomes alt text, and links retain URL sanitization and
 
 Existing backend settings remain `AI_API_KEY`, `AI_ENDPOINT`, `AI_MODEL`,
 `AI_REASONING_EFFORT`, `AI_MAX_OUTPUT_TOKENS` and `AI_TIMEOUT`. Defaults are the
-DeepSeek Responses endpoint, `deepseek-flash`, effort `none`, 2048 output tokens
+DeepSeek Responses endpoint, `deepseek-flash`, effort `none`, 8192 output tokens
 and a 60-second timeout. Empty effort omits that field. Credentials stay on the
 backend, never in `web/`, `VITE_*`, cookies or committed files. Embeddings remain
 independently configured by `EMBEDDING_*`.
+
+The reply allowance was increased from 2,048 to 8,192 tokens on 2026-10-27 so
+normal document analyses and inventories can finish. This is a ceiling, not a
+requested answer length. It is separate from the unchanged 32,000-character
+input envelope and PostgreSQL chat storage. Explicit environment overrides still
+win: on an existing Railway backend, change `AI_MAX_OUTPUT_TOKENS=2048` to `8192`
+(or remove the override to use the new default) and deploy the variable change.
+Changing only the repository default cannot override a Railway variable.
+The provider's [Responses API](https://api-docs.deepseek.com/guides/responses_api/)
+supports this output limit and reports truncation separately from input limits.
 
 `CHAT_ALLOWED_ORIGINS` must include the public web origins; Railway normally uses
 `https://erro.ink,https://www.erro.ink`. Set development origins explicitly when
@@ -78,7 +88,7 @@ FAILED request records. A provider-reported `max_output_tokens` interruption
 explicitly identifies the response length limit and suggests a concise answer
 or one section. Other incomplete replies suggest retrying; neither is presented
 as proof that the user message or stored chat is too long. Partial technical
-answers are not published. Output budgets/configuration remain unchanged. Parser, database, authorization and quota errors retain
+answers are not published. Incomplete technical answers are still withheld; no automatic paid retry is added. Parser, database, authorization and quota errors retain
 safe `{error: ...}` responses. A deterministic electrical FAIL can still answer
 without a configured model.
 
@@ -102,3 +112,21 @@ database/browser runners documented in [Saved guest chats](guest-chats.md).
 Browser coverage includes document processing followed by one-letter questions,
 refresh/restoration, pending recovery, cancellation/errors, guest isolation and
 delete-all rotation. Tests use local mock AI providers and no real credentials.
+
+### Longer replies and chat layout — 2026-10-27
+
+Frontend build/lint and Maven `verify` passed; all 103 backend tests ran with no
+failures or skips against a disposable native PostgreSQL 16 database. The API
+tests verify the 8,192-token default and preservation of an explicit smaller
+override. The browser fixture checks a long saved reply, reading from its
+beginning after refresh, growing/clearing the composer, and overflow at
+1440/768/390/320px. Both native browser suites passed, including sending,
+loading/errors, Markdown formatting, saved message/attachment restoration and
+guest-data deletion across tabs. Desktop/mobile screenshots were inspected.
+
+Compose configuration validation passed using the Windows Docker CLI. Docker
+image builds, `scripts/verify-knowledge.sh` and Compose startup connection checks
+could not run: WSL Docker integration was unavailable and the Windows Docker
+engine pipe was missing. The native fixtures use JDK 25, PostgreSQL 16 and Nginx
+1.24; the pinned production images and Redis/S3 startup checks remain unverified.
+No live provider request or Railway variable change was made for this check.
