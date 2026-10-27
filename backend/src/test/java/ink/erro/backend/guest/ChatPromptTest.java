@@ -14,19 +14,20 @@ class ChatPromptTest {
         var evidence=new ArrayList<DocumentModels.Evidence>();
         for(int i=0;i<39;i++) {
             var items=List.of(
-                    new DocumentModels.Item("Q"+i,"C16 breaker; XPJ-HF D 5G6; readable diagram and matching schedule row",java.math.BigDecimal.ONE,"pcs","VISION_SYMBOL_COUNT",null,""),
+                    new DocumentModels.Item("Q"+i,"C16 breaker; XPJ-HF D 5G6; matching schedule row",java.math.BigDecimal.ONE,"pcs","VISION_SYMBOL_COUNT",null,""),
                     new DocumentModels.Item("M"+i,"Meter, 3x230/400 V; exact model and mounting width not printed",java.math.BigDecimal.ONE,"pcs","VISION_SYMBOL_COUNT",null,""),
                     new DocumentModels.Item("R"+i,"Type A RCD, In 25A, residual current 30mA; one physical device",java.math.BigDecimal.ONE,"pcs","VISION_SYMBOL_COUNT",null,""),
                     new DocumentModels.Item("K"+i,"Contactor In 25A; circuit reference and pole notation unresolved",null,"pcs","VISION_UNLOCATED",null,""));
             evidence.add(new DocumentModels.Evidence("D-"+UUID.randomUUID(),"26004_PP_EL-7-01_v01_Peakilp.pdf","Page "+(i/13+1)+", region x=0..1654, y="+((i%13)/4*647)+".."+Math.min(2339,((i%13)/4+1)*647)+" (1654×2339 px), items "+(i*4+1)+"–"+(i*4+4)+", part 1","VISION",
-                    "Check original drawing\n"+json.writeValueAsString(items),items));
+                    "Check original drawing\n"+json.writeValueAsString(items),items,true));
         }
         var assessment=org.mockito.Mockito.mock(ink.erro.backend.document.DocumentAssessmentService.class);
         org.mockito.Mockito.when(assessment.assess(org.mockito.ArgumentMatchers.anyList())).thenReturn(List.of());
         var documents=new ink.erro.backend.document.DocumentContextService(null,new ElectricalCalculationService(),assessment)
                 .fromExtractions(List.of(new DocumentModels.Extraction(evidence,List.of())),"DIN module and cabinet estimate");
         assertThat(documents.excerpts()).hasSize(39);
-        assertThat(documents.complete()).isTrue();
+        assertThat(documents.complete()).isFalse();
+        assertThat(documents.uncertainExcerpts()).isEqualTo(39);
         var context=new ElectricalContextService.Context("query",Set.of(),new ElectricalParameterExtractor().extract(""),
                 new KnowledgeModels.Retrieval(List.of(),List.of(),"KEYWORD"),List.of(),List.of(),List.of(),List.of(),List.of(),List.of());
         var result=new ChatPrompt().build("DIN module estimate",List.of(),List.of(new ChatService.Turn("assistant","older reply "+"x".repeat(8000))),context,documents);
@@ -34,6 +35,8 @@ class ChatPromptTest {
         var data=json.readTree(result.json()).path("documentData");
         assertThat(data.path("excerpts").size()).isEqualTo(39);
         assertThat(data.path("coverage").path("allExtractedEvidenceSupplied").asBoolean()).isTrue();
+        assertThat(data.path("complete").asBoolean()).isFalse();
+        assertThat(data.path("coverage").path("uncertainExcerpts").asInt()).isEqualTo(39);
         assertThat(data.path("coverage").path("omittedExcerpts").asInt()).isZero();
         assertThat(data.path("excerpts").get(0).path("text").asText()).isEqualTo("Check original drawing");
         assertThat(data.path("excerpts").get(0).path("id").asText()).isEqualTo("D1");

@@ -274,3 +274,31 @@ errors, deletion, guest isolation and responsive layouts. Compose configuration
 passed; Docker builds/database runner/startup verification remain blocked by the
 unavailable local Docker engine. No frontend, database schema or AI output-budget
 change was needed. The live provider check is recorded separately below.
+
+### Live verification and remaining interpretation limits
+
+Railway deployed backend/web commit `33d0431` successfully. A fresh anonymous
+browser uploaded the supplied three-page PDF and received 31 saved excerpts.
+The estimate received all 31, with no omitted-evidence warning, and returned 19
+valid document citations spanning all three pages. A one-letter follow-up, refresh
+restoration, and another question all succeeded: six saved messages, 31 document
+citations across the replies and no browser errors. Another guest could not read
+the chat. Delete-all erased the test messages/attachment and returned an empty
+guest. The 390-pixel layout was visually checked. Test originals, rendered images,
+private guest credentials and transcripts were not committed.
+
+This passes the retrieval/persistence path, **not the takeoff's engineering
+accuracy**. The real answer still confused feeder destinations with separate
+boards and produced inconsistent provisional enclosure allowances. A later reply
+correctly identified its module widths as assumptions, but that does not validate
+its inventory or cabinet allocation. Do not use the generated cabinet number for
+ordering. Sheet/panel identity, circuit-to-cabinet allocation and device architecture
+remain interpretation limitations; prompt instructions alone have not resolved
+them. Exact widths still require chosen devices and sourced manufacturer data.
+
+The final focused regression additionally marks unlocated readings incomplete
+while verifying that all 39 fixture excerpts/156 readings still fit: uncertainty
+remains separate from omitted evidence, unknown quantities stay null and complete
+source locations survive metadata sharing. Both prompt tests passed. Larger or
+more verbose extractions can still exceed the bounded budget; coverage must report
+those omissions honestly rather than claiming every possible PDF fits.
