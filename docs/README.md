@@ -9,7 +9,7 @@ PostgreSQL, Redis, local MinIO, and the planned switch to Amazon S3.
 [Electrical knowledge](knowledge.md) covers retrieval, migrations, source licensing,
 admin ingestion/debugging, calculations, catalog validation and Railway rollout.
 
-[Chat](chat.md) covers the AI request flow, API contract, DeepSeek configuration,
+[Chat](chat.md) covers clarification before evaluation, the AI request flow, API contract, DeepSeek configuration,
 frontend behavior, deployment settings, and verification.
 
 [Chat documents](documents.md) covers attachments, direct extraction,

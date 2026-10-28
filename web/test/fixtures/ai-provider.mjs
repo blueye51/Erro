@@ -50,6 +50,16 @@ http.createServer(async (request, response) => {
     const text = Array.from({ length: 60 }, (_, index) => `### Reading section ${index + 1}\n\nThis is a long response fixture for checking paragraph readability, scrolling, and saved conversation restoration. These are interface test observations, not electrical specifications or equipment recommendations.`).join('\n\n')
     return response.end(JSON.stringify({ status: 'completed', output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text }] }] }))
   }
+  if (input.userQuestion.includes('test-clarify') || input.previousUserMessages?.some(text => text.includes('test-clarify'))) {
+    const questions = 'Two details will help me evaluate the panel plan:\n\n1. Will the panel be indoors or outdoors?\n2. What spare-capacity allowance do you want? You can say "I don’t know".'
+    const first = input.userQuestion.includes('test-clarify')
+    const priorQuestion = input.previousConversation?.some(turn => turn.role === 'assistant' && turn.content === questions)
+    if (!envelope.instructions.includes('ask at most two short numbered questions') || (!first && !priorQuestion)) {
+      response.writeHead(400); return response.end(JSON.stringify({ error: 'Fixture clarification context missing' }))
+    }
+    const text = first ? questions : '### Provisional evaluation\n\nUsing your indoor location. The spare-capacity allowance remains unknown, so no final cabinet size is established. We can assess the supported inventory without inventing a spare allowance.'
+    return response.end(JSON.stringify({ status: 'completed', output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text }] }] }))
+  }
   const id = input.referenceData.retrieval.hits[0]?.source.id
   const document = input.documentData?.excerpts[0]?.id
   const text = input.userQuestion.includes('test-table') ? tableReply : `**Engineering reply.** Confirm the nameplate and protection coordination.${id ? ` [${id}]` : ''}${document ? ` [${document}]` : ''}\n\n- Review the supplied conditions.\n- Resolve the missing information.`

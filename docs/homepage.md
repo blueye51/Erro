@@ -35,6 +35,10 @@ for controls and errors so the footer does not overlap the mobile composer.
   sends. Pending replies survive refresh and can be cancelled. Errors restore
   the draft for retry. Replies retain safe Markdown and
   expandable sources, calculations, assumptions, warnings and missing information.
+- Before an evaluation, the assistant may ask one or two useful clarification
+  questions. Reply in the same message box, including "I don't know" when needed.
+  Questions and answers survive refresh like other messages; see
+  [clarification behavior](chat.md#clarification-before-evaluation).
 - **Knowledge management** remains available in the footer at `/#knowledge`, with
   backend token protection. Leaving that view unmounts its token state.
 

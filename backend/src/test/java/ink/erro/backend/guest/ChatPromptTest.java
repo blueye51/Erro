@@ -9,6 +9,30 @@ import ink.erro.backend.knowledge.KnowledgeModels;
 import static org.assertj.core.api.Assertions.*;
 
 class ChatPromptTest {
+    @Test void shortClarificationSurvivesDocumentPressureWithoutBecomingTechnicalInput() {
+        var question="Before evaluating: 1. What is the motor nameplate current? 2. Is 230 V only an unverified possibility?";
+        var original="Evaluate my 400 V motor installation.";
+        var parameters=new ElectricalParameterExtractor().extract(original);
+        var context=new ElectricalContextService.Context(original,Set.of(),parameters,
+                new KnowledgeModels.Retrieval(List.of(),List.of(),"KEYWORD"),List.of(),List.of(),List.of(),List.of(),List.of(),List.of());
+        var excerpts=new ArrayList<DocumentModels.Evidence>();
+        for(int i=0;i<24;i++) excerpts.add(new DocumentModels.Evidence("D-"+UUID.randomUUID(),"project.pdf","Page "+i,"VISION","Drawing "+"a".repeat(2200),List.of()));
+        var documents=new DocumentModels.Context(excerpts,List.of(),24,true,List.of(),List.of());
+        var history=List.of(new ChatService.Turn("assistant","Old evaluation "+"x".repeat(6000)),
+                new ChatService.Turn("user",original),new ChatService.Turn("assistant",question));
+
+        var result=new ChatPrompt().build("14 A; no, keep the original supply.",List.of(original),history,context,documents);
+        var envelope=tools.jackson.databind.json.JsonMapper.builder().build().readTree(result.json());
+        assertThat(result.json()).hasSizeLessThanOrEqualTo(ChatPrompt.MAX_CHARS).doesNotContain("Old evaluation");
+        assertThat(envelope.path("previousConversation").size()).isEqualTo(1);
+        assertThat(envelope.path("previousConversation").get(0).path("content").asText()).isEqualTo(question);
+        assertThat(envelope.path("previousUserMessages").get(0).asText()).isEqualTo(original);
+        assertThat(envelope.path("referenceData").path("parameters").path("values").path("voltage").path("value").asInt()).isEqualTo(400);
+        assertThat(result.excerpts()).isNotEmpty().hasSizeLessThan(excerpts.size());
+        assertThat(envelope.path("documentData").path("coverage").path("omittedExcerpts").asInt()).isPositive();
+        assertThat(history).hasSize(3);
+    }
+
     @Test void allThirtyNineSavedDrawingExcerptsFitWithoutRepeatingItemJson() {
         var json=tools.jackson.databind.json.JsonMapper.builder().build();
         var evidence=new ArrayList<DocumentModels.Evidence>();

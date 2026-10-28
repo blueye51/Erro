@@ -1,6 +1,6 @@
 # E.R.R.O. project context
 
-Last updated: 2026-10-27
+Last updated: 2026-10-28
 
 ## People and name
 
@@ -72,6 +72,14 @@ The default response allowance is now 8,192 tokens, independently of bounded AI
 inputs and full stored history. The chat has a wider transcript, larger text and
 a growing multiline composer. Existing production output-limit overrides need
 the same update; see [Chat configuration](chat.md#configuration).
+On 2026-10-28 Eric requested useful clarification before a final evaluation.
+The assistant is now instructed to ask up to two focused questions when their
+answers would materially change the assessment, wait for the user's reply, and
+then continue using the saved exchange. It should answer directly when enough
+information is available and give qualified supported results when the user
+cannot supply more. Short preceding assistant replies receive prompt space so
+clarification survives large document context; they remain unverified dialogue.
+See [Clarification before evaluation](chat.md#clarification-before-evaluation).
 
 - React/TypeScript/Vite in `web/`, Spring Boot/Java/Maven in `backend/`.
 - The website uses cookie-scoped `/api/guest` and `/api/chats` routes, durable

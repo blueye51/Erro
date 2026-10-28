@@ -10,6 +10,8 @@ on refresh. **New chat** starts a separate conversation; **Delete all my data**
 erases the guest's chats and documents and starts a new guest session. No login
 is required. Saved history is selected within a bounded AI prompt so large
 attachments and long chats do not fill every follow-up request.
+The assistant can ask up to two useful clarification questions before evaluating;
+answer in the same chat, or say when a detail is unknown.
 See [Guest chats](docs/guest-chats.md) and [Chat documents](docs/documents.md).
 
 Read [Project context](docs/project-context.md) and [Electrical knowledge](docs/knowledge.md)

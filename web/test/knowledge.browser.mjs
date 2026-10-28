@@ -108,9 +108,10 @@ try {
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), `Table page overflow at ${width}`)
     if (width < 500) {
       assert.ok(await tableRegion.evaluate(el => el.scrollWidth > el.clientWidth), 'Mobile table scrolls inside its container')
-      await tableRegion.evaluate(el => { el.scrollLeft = 0 })
+      // Start a fresh keyboard interaction after changing the viewport.
+      await tableRegion.evaluate(el => { el.blur(); el.scrollLeft = 0 })
       await tableRegion.focus()
-      await page.keyboard.press('ArrowRight')
+      await page.keyboard.press('ArrowRight', { delay: 100 })
       await page.waitForFunction(() => document.querySelector('.message-table').scrollLeft > 0)
       await tableRegion.evaluate(el => { el.scrollLeft = 0 })
     }

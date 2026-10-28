@@ -11,12 +11,17 @@ import ink.erro.backend.product.ProductModels.Candidate;
 /** Storage is unlimited by the model window; each generation receives a bounded evidence selection. */
 public final class ChatPrompt {
     public static final int MAX_CHARS=32000;
+    private static final int MAX_RECENT_REPLY_CHARS=2400;
     public record Input(String json,List<Hit> hits,List<DocumentModels.Evidence> excerpts,boolean trimmed) {}
     private final JsonMapper json=JsonMapper.builder().build();
     public Input build(String question,List<String> users,List<ChatService.Turn> history,ElectricalContextService.Context context,DocumentModels.Context documents) {
         var hits=new ArrayList<>(context.retrieval().hits());
         var excerpts=new ArrayList<>(documents.excerpts());
         var dialogue=new ArrayList<>(history);
+        // A short preceding question gives meaning to answers such as "indoors, 20%".
+        // Retain it as untrusted dialogue only, never as a technical user input.
+        boolean keepRecentReply=!dialogue.isEmpty() && dialogue.getLast().role().equals("assistant")
+                && dialogue.getLast().content().length()<=MAX_RECENT_REPLY_CHARS;
         var prior=new ArrayList<>(users);
         var products=new ArrayList<>(context.products().stream().map(this::product).toList());
         var assessments=new ArrayList<>(documents.assessments().stream().map(a->Map.<String,Object>of(
@@ -57,7 +62,7 @@ public final class ChatPrompt {
                     "contextSelection",trimmed?"Some conversation/reference context was omitted to fit this request. Stored history is unchanged. Use documentData.coverage for document coverage.":"Selected recent conversation and retrieved evidence."));
             if(input.length()<=MAX_CHARS) return new Input(input,List.copyOf(hits),List.copyOf(excerpts),trimmed);
             trimmed=true;
-            if(!dialogue.isEmpty()) dialogue.removeFirst();
+            if(dialogue.size()>(keepRecentReply?1:0)) dialogue.removeFirst();
             else if(hits.size()>1) hits.removeLast();
             else if(!products.isEmpty()) products.removeLast();
             else if(!assessments.isEmpty()) assessments.removeLast();
@@ -66,6 +71,7 @@ public final class ChatPrompt {
             else if(!prior.isEmpty()) prior.removeFirst();
             else if(!hits.isEmpty()) hits.removeLast();
             else if(!excerpts.isEmpty()) excerpts.removeLast();
+            else if(!dialogue.isEmpty()) dialogue.removeFirst();
             else {
                 reference.clear();doc.clear();
                 reference.put("warnings",List.of("Detailed reference metadata exceeded the request budget. Treat unsupported specifications as unknown."));

@@ -104,6 +104,40 @@ class GuestDatabaseTest {
         assertThat(repository.detail(guestId(browser),browser.chat(),null).messages()).hasSize(4);
         mvc.perform(get("/api/chats/"+browser.chat()).cookie(browser.cookie())).andExpect(status().isOk()).andExpect(jsonPath("$.messages.length()").value(4));
     }
+    @Test void clarificationAndUserAnswersSurviveRefreshAndStayIsolatedFromNewTopics() throws Exception {
+        Browser browser=browser();
+        String original="Evaluate protection for my 400 V motor.";
+        String questions="Before the assessment:\n\n1. What is the nameplate current?\n2. What starting method is used? A hypothetical 63 A rating is not a verified input.";
+        String answer="The nameplate current is 14 A. I don't know the starting method; please proceed with a provisional assessment.";
+        when(ai.reply(anyString())).thenAnswer(call->{
+            String prompt=call.getArgument(0);input.set(prompt);
+            return json.readTree(prompt).path("userQuestion").asText().equals(original)?questions:
+                    "Provisional assessment: the starting method remains unknown; a final protection selection is not established.";
+        });
+        send(browser,UUID.randomUUID(),original,List.of());jobs.runChat();
+        verify(ai,times(1)).reply(anyString());
+        var restarted=new GuestRepository(jdbc,manager);
+        assertThat(restarted.detail(guestId(browser),browser.chat(),null).messages().getLast().text()).contains(questions);
+        mvc.perform(get("/api/chats/"+browser.chat()).cookie(browser.cookie()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.messages.length()").value(2));
+
+        send(browser,UUID.randomUUID(),answer,List.of());jobs.runChat();
+        var envelope=json.readTree(input.get());
+        assertThat(envelope.path("userQuestion").asText()).isEqualTo(answer);
+        assertThat(envelope.path("previousUserMessages").get(0).asText()).isEqualTo(original);
+        assertThat(envelope.path("previousConversation").toString()).contains("nameplate current", "hypothetical 63 A");
+        var parameters=envelope.path("referenceData").path("parameters").path("values");
+        assertThat(parameters.path("voltage").path("value").asInt()).isEqualTo(400);
+        assertThat(parameters.path("current").path("value").asInt()).isEqualTo(14);
+        assertThat(restarted.detail(guestId(browser),browser.chat(),null).messages()).hasSize(4);
+        verify(ai,times(2)).reply(anyString());
+
+        send(browser,UUID.randomUUID(),"New problem: Hello",List.of());jobs.runChat();
+        assertThat(json.readTree(input.get()).path("previousConversation").isEmpty()).isTrue();
+        assertThat(json.readTree(input.get()).path("previousUserMessages").isEmpty()).isTrue();
+        assertThat(input.get()).doesNotContain("hypothetical 63 A", original);
+    }
+
     @Test void attachmentsSurviveRepositoryRestartAndOriginalBytesAreRemovedAfterExtraction() throws Exception {
         Browser one=browser(),two=browser();
         UUID file=upload(one);

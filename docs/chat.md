@@ -24,6 +24,33 @@ Safe Markdown, engineering details, deterministic FAIL handling, citations and
 the existing protected knowledge UI remain in use. See [Electrical knowledge](knowledge.md)
 and [Documents](documents.md) for evidence boundaries.
 
+## Clarification before evaluation
+
+The assistant is instructed to decide whether a missing detail would materially
+change the requested assessment. When it would, and the user can reasonably
+supply it, the assistant explains why and asks one or two short numbered
+questions before giving the final evaluation. Answer them together in the normal
+message box; free text, "I don't know" and a request to proceed are supported.
+The next reply uses those answers and the original request. Questions and answers
+are ordinary saved messages, so refreshing between them preserves the exchange.
+
+For example, an enclosure planning question might need the installation location
+and desired spare allowance. An explanation or readable-document summary should
+usually be answered directly. The assistant should reuse supplied information,
+avoid repeating unavailable details, and prefer one clarification round. Another
+round is reserved for a newly revealed essential ambiguity. If details remain
+unknown, it should give supported results and clearly labelled planning scenarios,
+withholding any unsupported final selection. Existing deterministic failures are
+reported immediately and cannot be postponed by questions.
+
+This is a model-guided conversation policy in `knowledge/electrical-system.txt`,
+using the existing single generation per message. There is no additional preflight
+AI call, form, API field, database migration or configuration switch. Rebuild and
+deploy the backend to enable it. The model chooses which questions are useful;
+the two-question limit and judgment are instructions, not a deterministic schema
+or guarantee of engineering completeness. Prompt changes do not enlarge the
+response-token allowance or resolve a production limit override.
+
 ## Model context and continuity
 
 The complete conversation is saved, but it is not blindly resent to the model.
@@ -32,6 +59,11 @@ PostgreSQL text search, plus recent dialogue. The generation input is capped at
 32,000 serialized characters, with explicit omission/incomplete flags. Dropping
 context for one answer never deletes saved messages. Structured document items
 use a shared column schema and short citation IDs; document evidence takes priority over older assistant dialogue.
+The latest assistant reply, when at most 2,400 characters, is retained ahead of
+additional evidence so a brief answer to clarification questions keeps its meaning.
+It remains untrusted dialogue, never a deterministic technical input. The same
+32,000-character ceiling and evidence-omission warnings still apply; a topic reset
+clears this dialogue along with the preceding user context.
 Coverage distinguishes omitted excerpts from readings with uncertain positions,
 so a prompt limit is not described as an unreadable original drawing.
 
@@ -130,3 +162,31 @@ could not run: WSL Docker integration was unavailable and the Windows Docker
 engine pipe was missing. The native fixtures use JDK 25, PostgreSQL 16 and Nginx
 1.24; the pinned production images and Redis/S3 startup checks remain unverified.
 No live provider request or Railway variable change was made for this check.
+
+### Clarification flow — 2026-10-28
+
+Frontend build/lint passed. Maven `verify` passed all 105 tests with no skips
+against disposable PostgreSQL 16. Tests cover retaining short clarification
+replies under document pressure within the 32,000-character envelope, restoring
+questions from PostgreSQL, combining user answers with the original request,
+isolating generated example ratings from deterministic inputs, and clearing
+dialogue on a topic reset. The API test checks that generation receives the
+clarification policy; existing deterministic failure tests still pass.
+
+Both native browser suites passed with the built app and local mock AI, covering
+two numbered questions without an early evaluation, refresh before answering,
+free-text/unknown answers, a saved provisional evaluation and new-chat isolation.
+The mobile clarification screenshot was inspected. Existing sending/loading/error,
+attachment restoration, deletion and responsive-layout checks also passed. The
+table keyboard check initially timed out after viewport changes; it now refocuses
+the scroll region and uses a 100 ms keypress before checking actual horizontal
+movement. No production layout change was needed.
+
+Compose configuration validation passed through the Windows Docker CLI. The
+backend image build, `scripts/verify-knowledge.sh` and Compose startup checks
+remain unavailable because WSL Docker integration and the Windows engine pipe
+are unavailable. Native verification uses JDK 25, PostgreSQL 16 and Nginx 1.24.
+The AI provider in automated checks is a local fixture: these tests establish
+instruction delivery and the saved conversation flow, not the live model's
+judgment about which questions to ask. No production deployment or live provider
+evaluation was performed for this change.

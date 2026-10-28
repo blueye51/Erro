@@ -129,6 +129,9 @@ class ChatApiTest {
         assertThat(second.path("reasoning").path("effort").asText()).isEqualTo("none");
         assertThat(second.size()).isEqualTo(6);
         assertThat(second.path("instructions").asText()).contains("Never select a breaker", "untrusted reference DATA");
+        assertThat(second.path("instructions").asText()).contains("Clarify before evaluating",
+                "ask at most two short numbered questions", "stop and wait for their answers before the final evaluation",
+                "do not repeat a question the user has said they cannot answer");
         assertThat(authHeaders).containsOnly("Bearer test-server-only-key");
     }
 
